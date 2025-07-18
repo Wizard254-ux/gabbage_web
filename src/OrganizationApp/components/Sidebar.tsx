@@ -61,7 +61,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
       {/* Mobile Menu Button */}
       <button
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        className="lg:hidden fixed top-4 left-4 z-50 bg-slate-900 text-white p-2 rounded-lg shadow-lg"
+        className="lg:hidden fixed top-4 left-4 z-50 bg-green-600 text-white p-2 rounded-lg shadow-lg"
       >
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
@@ -78,32 +78,31 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
 
       {/* Sidebar */}
       <div className={`
-        w-64 min-w-64 bg-gradient-to-b from-slate-900 to-slate-800 shadow-2xl h-screen sticky top-0 flex flex-col overflow-hidden z-40
+        w-64 lg:w-56 bg-gray-800 shadow-xl h-screen flex flex-col overflow-hidden z-40
         lg:translate-x-0 transition-transform duration-300 ease-in-out
-        ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-        ${isMobileMenuOpen ? 'fixed' : 'lg:relative'}
+        ${isMobileMenuOpen ? 'translate-x-0 fixed' : '-translate-x-full lg:translate-x-0 lg:relative'}
       `}>
         {/* Header */}
-        <div className="p-6 border-b border-slate-700 flex-shrink-0">
+        <div className="p-4 border-b border-gray-700 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 bg-gradient-to-br from-green-400 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-10 h-10 bg-green-600 rounded-lg flex items-center justify-center shadow-md">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                 </svg>
               </div>
               <div>
-                <h2 className="text-xl font-bold text-white">GreenLife</h2>
-                <p className="text-sm text-slate-300">Organization Portal</p>
+                <h2 className="text-lg font-bold text-white">GreenLife</h2>
+                <p className="text-xs text-gray-400">Organization Portal</p>
               </div>
             </div>
             
             {/* Mobile Close Button */}
             <button
               onClick={() => setIsMobileMenuOpen(false)}
-              className="lg:hidden text-slate-400 hover:text-white"
+              className="lg:hidden text-gray-400 hover:text-white"
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
@@ -111,7 +110,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
         </div>
         
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-1">
+        <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
           {menuItems.map((item) => (
             <button
               key={item.id}
@@ -119,18 +118,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
                 setActiveTab(item.id);
                 setIsMobileMenuOpen(false); // Close mobile menu when item is selected
               }}
-              className={`w-full flex items-center space-x-3 px-4 py-4 rounded-xl text-left transition-all duration-200 group ${
+              className={`w-full flex items-center space-x-3 px-3 py-3 rounded-lg text-left transition-all duration-200 group ${
                 activeTab === item.id 
-                  ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg' 
-                  : 'text-slate-300 hover:bg-slate-700/50 hover:text-white'
+                  ? 'bg-green-600 text-white shadow-md' 
+                  : 'text-gray-300 hover:bg-gray-700 hover:text-white'
               }`}
             >
               <span className={`transition-all duration-200 ${
-                activeTab === item.id ? 'text-white' : 'text-slate-400 group-hover:text-green-400'
+                activeTab === item.id ? 'text-white' : 'text-gray-400 group-hover:text-green-400'
               }`}>
                 {item.icon}
               </span>
-              <span className="font-medium flex-1">{item.label}</span>
+              <span className="font-medium flex-1 text-sm">{item.label}</span>
               {activeTab === item.id && (
                 <div className="w-2 h-2 bg-white rounded-full"></div>
               )}
@@ -139,9 +138,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
         </nav>
 
         {/* Footer */}
-        <div className="p-4 border-t border-slate-700 flex-shrink-0">
-          <div className="flex items-center justify-center space-x-2 text-slate-400 text-sm">
-            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+        <div className="p-4 border-t border-gray-700 flex-shrink-0">
+          <div className="flex items-center justify-center space-x-2 text-gray-400 text-xs">
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
             <span>System Online</span>
           </div>
         </div>

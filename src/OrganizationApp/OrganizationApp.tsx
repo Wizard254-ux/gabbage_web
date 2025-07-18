@@ -32,14 +32,16 @@ export const OrganizationApp: React.FC<OrganizationAppProps> = ({ onLogout }) =>
   };
 
   return (
-    <div className="h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex overflow-hidden">
+    <div className="h-screen bg-white flex overflow-hidden">
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
       
-      <div className="flex-1 flex flex-col min-w-0 lg:ml-0">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <Navbar onLogout={onLogout} />
         
-        <main className="flex-1 overflow-y-auto bg-gradient-to-br from-gray-50 to-gray-100">
-          {renderContent()}
+        <main className="flex-1 overflow-y-auto bg-gray-50 w-full">
+          <div className="w-full max-w-none">
+            {renderContent()}
+          </div>
         </main>
       </div>
     </div>

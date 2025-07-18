@@ -140,12 +140,86 @@ export const organizationService = {
     }),
 
   // Payment Management
-  processPayment: (paymentData: any) =>
+  processPayment: (paymentData: {
+    accountNumber: string;
+    amount: number;
+    paymentMethod: string;
+    mpesaReceiptNumber?: string;
+    phoneNumber: string;
+    transactionId: string;
+  }) =>
     api.post("/payments/process", paymentData),
 
-  getPaymentHistory: (accountNumber: string, params?: any) =>
+  generateMonthlyInvoices: () =>
+    api.post("/payments/generate-invoices"),
+
+  getPaymentHistory: (accountNumber: string, params?: { page?: number; limit?: number }) =>
     api.get(`/payments/history/${accountNumber}`, { params }),
 
-  getAccountStatement: (accountNumber: string, params?: any) =>
+  getAccountStatement: (accountNumber: string, params?: { 
+    startDate?: string; 
+    endDate?: string; 
+    page?: number; 
+    limit?: number 
+  }) =>
     api.get(`/payments/statement/${accountNumber}`, { params }),
+
+  getPaymentsByDateRange: (params: {
+    startDate: string;
+    endDate: string;
+    page?: number;
+    limit?: number;
+  }) =>
+    api.get("/payments/transactions", { params }),
+
+  getPaymentDetails: (paymentId: string) =>
+    api.get(`/payments/${paymentId}`),
+
+  updatePaymentStatus: (paymentId: string, status: string) =>
+    api.put(`/payments/${paymentId}/status`, { status }),
+
+  // Additional Payment APIs from Postman collection
+  getAllPayments: (params?: { 
+    page?: number; 
+    limit?: number; 
+    status?: string; 
+    paymentMethod?: string;
+    startDate?: string;
+    endDate?: string;
+  }) =>
+    api.get("/payments", { params }),
+
+  getPaymentById: (paymentId: string) =>
+    api.get(`/payments/${paymentId}`),
+
+  reversePayment: (paymentId: string, reason?: string) =>
+    api.post(`/payments/${paymentId}/reverse`, { reason }),
+
+  validatePayment: (paymentData: {
+    accountNumber: string;
+    mpesaReceiptNumber: string;
+    amount: number;
+  }) =>
+    api.post("/payments/validate", paymentData),
+
+  getPaymentStats: (params?: { 
+    startDate?: string; 
+    endDate?: string; 
+    groupBy?: 'day' | 'week' | 'month' 
+  }) =>
+    api.get("/payments/stats", { params }),
+
+  exportPayments: (params: {
+    format: 'csv' | 'excel' | 'pdf';
+    startDate?: string;
+    endDate?: string;
+    accountNumber?: string;
+  }) =>
+    api.get("/payments/export", { params, responseType: 'blob' }),
+
+  reconcilePayments: (params: { 
+    startDate: string; 
+    endDate: string; 
+  }) =>
+    api.post("/payments/reconcile", params),
 };
