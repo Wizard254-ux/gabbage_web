@@ -8,6 +8,7 @@ interface Driver {
   phone: string;
   isActive: boolean;
   createdAt: string;
+  id:string
 }
 
 export const Drivers: React.FC = () => {
@@ -62,9 +63,10 @@ export const Drivers: React.FC = () => {
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedDriver) return;
+    console.log('selectde driver ',selectedDriver)
 
     try {
-      await organizationService.editDriver(selectedDriver._id, editFormData);
+      await organizationService.editDriver(selectedDriver.id, editFormData);
       setShowEditModal(false);
       setSelectedDriver(null);
       fetchDrivers();
