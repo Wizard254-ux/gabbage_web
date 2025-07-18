@@ -31,13 +31,16 @@ export const Routes: React.FC = () => {
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (showDropdown && !(event.target as Element).closest('.dropdown-menu')) {
+      // Only close if clicking outside both the dropdown menu and the trigger button
+      if (showDropdown && 
+          !(event.target as Element).closest('.dropdown-menu') && 
+          !(event.target as Element).closest('.dropdown-trigger')) {
         setShowDropdown(null);
       }
     };
 
-    document.addEventListener('click', handleClickOutside);
-    return () => document.removeEventListener('click', handleClickOutside);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showDropdown]);
 
   const fetchRoutes = async () => {
@@ -45,9 +48,15 @@ export const Routes: React.FC = () => {
       const response = await organizationService.getAllRoutes();
       console.log('Routes API response:', response);
       // The API returns data in response.data.data (not response.data.routes)
-      setRoutes(response.data.data || []);
+      if (response.data && response.data.data) {
+        setRoutes(response.data.data);
+      } else {
+        console.error('Unexpected API response format:', response);
+        setRoutes([]);
+      }
     } catch (error) {
       console.error('Failed to fetch routes:', error);
+      setRoutes([]);
     } finally {
       setLoading(false);
     }
@@ -241,7 +250,7 @@ export const Routes: React.FC = () => {
                     <div className="relative">
                       <button
                         onClick={() => setShowDropdown(showDropdown === route._id ? null : route._id)}
-                        className="text-gray-400 hover:text-gray-600 transition-colors p-2 rounded-full hover:bg-gray-100"
+                        className="dropdown-trigger text-gray-400 hover:text-gray-600 transition-colors p-2 rounded-full hover:bg-gray-100"
                       >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
@@ -249,7 +258,7 @@ export const Routes: React.FC = () => {
                       </button>
                       
                       {showDropdown === route._id && (
-                        <div className="dropdown-menu absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
+                        <div className="dropdown-menu absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
                           <div className="py-2">
                             <button
                               onClick={() => {

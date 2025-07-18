@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "http://192.168.10.2:5000/api",
+  baseURL: "https://garbagesystem.onrender.com/api",
   timeout: 10000,
   withCredentials: true,
   headers: {
@@ -15,10 +15,18 @@ api.interceptors.request.use(
     if (admin) {
       try {
         const adminData = JSON.parse(admin);
-        config.headers.Authorization = `Bearer ${adminData.token}`;
+        if (adminData && adminData.token) {
+          config.headers.Authorization = `Bearer ${adminData.token}`;
+          console.log('Added auth token to request');
+        } else {
+          console.warn('No token found in admin data');
+        }
       } catch (error) {
+        console.error('Error parsing admin data:', error);
         localStorage.removeItem('admin');
       }
+    } else {
+      console.warn('No admin data found in localStorage');
     }
     return config;
   },
