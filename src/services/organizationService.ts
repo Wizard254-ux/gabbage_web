@@ -156,4 +156,17 @@ export const organizationService = {
 
   getAccountStatement: (accountNumber: string, params?: any) =>
     api.get(`/payments/statement/${accountNumber}`, { params }),
+    
+  // Invoice Management
+  getInvoices: (params?: { page?: number; limit?: number; status?: string; startDate?: string; endDate?: string }) =>
+    api.get("/invoices", { params }),
+    
+  createInvoice: (invoiceData: {
+    userId: string;
+    totalAmount: number;
+    dueDate: string;
+    billingPeriod: { start: string; end: string };
+  }) => api.post("/invoices", invoiceData),
+    
+  deleteInvoice: (id: string) => api.delete(`/invoices/${id}`),
 };
