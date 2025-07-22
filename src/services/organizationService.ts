@@ -1,7 +1,8 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "https://garbagesystem.onrender.com/api",
+  // baseURL: "https://garbagesystem.onrender.com/api",
+  baseURL: "http://192.168.0.115:5000/api",
   timeout: 10000,
   withCredentials: true,
   headers: {
@@ -115,6 +116,14 @@ export const organizationService = {
       userType: "client",
       userId
     }),
+    
+  sendDriverCredentials: (driverId: string) =>
+    api.post("/auth/send-driver-credentials", {
+      driverId
+    }),
+    
+  getDriverDetails: (driverId: string) =>
+    api.get(`/auth/driver/${driverId}`),
 
   // Route Management
   createRoute: (routeData: any) =>
@@ -230,4 +239,22 @@ export const organizationService = {
     endDate: string; 
   }) =>
     api.post("/payments/reconcile", params),
+
+  // Invoice Management
+  getAllInvoices: (params?: { 
+    page?: number; 
+    limit?: number; 
+    status?: string;
+    startDate?: string;
+    endDate?: string;
+    accountNumber?: string;
+  }) =>
+    api.get("/invoices", { params }),
+    
+  // Payment History
+  getAllPaymentHistory: (params?: {
+    page?: number;
+    limit?: number;
+  }) =>
+    api.get("/payments/history", { params }),
 };

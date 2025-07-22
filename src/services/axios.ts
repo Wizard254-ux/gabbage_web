@@ -1,7 +1,8 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "https://garbagesystem.onrender.com/api",
+  // baseURL: "https://garbagesystem.onrender.com/api",
+  baseURL: "http://localhost:5000/api",
   timeout: 10000,
   withCredentials: true,
   headers: {

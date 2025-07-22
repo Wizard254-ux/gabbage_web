@@ -31,7 +31,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
 
       const drivers = driversRes.data.users || [];
       const clients = clientsRes.data.users || [];
-      const routes = routesRes.data.routes || [];
+      const routes = routesRes.data.data || []; // Fixed: routes are in data.data, not data.routes
 
       setStats({
         totalDrivers: drivers.length,

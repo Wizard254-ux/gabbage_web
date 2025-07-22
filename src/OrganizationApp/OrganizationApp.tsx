@@ -6,6 +6,7 @@ import { Drivers } from './pages/Drivers';
 import { Clients } from './pages/Clients';
 import { Routes } from './pages/Routes';
 import { Payments } from './pages/Payments';
+import { Invoices } from './pages/Invoices';
 
 interface OrganizationAppProps {
   onLogout: () => void;
@@ -26,6 +27,8 @@ export const OrganizationApp: React.FC<OrganizationAppProps> = ({ onLogout }) =>
         return <Routes />;
       case 'payments':
         return <Payments />;
+      case 'invoices':
+        return <Invoices />;
       default:
         return <Dashboard onNavigate={setActiveTab} />;
     }
