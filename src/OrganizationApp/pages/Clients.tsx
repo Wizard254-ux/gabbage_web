@@ -11,12 +11,16 @@ interface Client {
   pickUpDay: string;
   isActive: boolean;
   monthlyRate: number;
+  clientType: 'residential' | 'commercial';
+  numberOfUnits?: number;
+  id?:string;
 }
 
 export const Clients: React.FC = () => {
   const [clients, setClients] = useState<Client[]>([]);
   const [routes, setRoutes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
@@ -30,16 +34,19 @@ export const Clients: React.FC = () => {
     route: '',
     pickUpDay: '',
     isActive: true,
+    clientType: 'residential',
+    monthlyRate: 0,
+    numberOfUnits: 1,
   });
   const [addFormData, setAddFormData] = useState({
     name: '',
     email: '',
     phone: '',
-    password: '',
     address: '',
     route: '',
     pickUpDay: '',
     monthlyRate: 0,
+    numberOfUnits: 1,
     isActive: true,
     role: 'client',
     clientType: 'residential',
@@ -93,6 +100,9 @@ export const Clients: React.FC = () => {
       route: client.route,
       pickUpDay: client.pickUpDay,
       isActive: client.isActive,
+      clientType: client.clientType || 'residential',
+      monthlyRate: client.monthlyRate || 0,
+      numberOfUnits: client.numberOfUnits || 1,
     });
     setShowEditModal(true);
   };
@@ -101,13 +111,24 @@ export const Clients: React.FC = () => {
     e.preventDefault();
     if (!selectedClient) return;
 
+    setSubmitting(true);
     try {
-      await organizationService.editClient(selectedClient._id, editFormData);
+      // Use _id instead of id
+      const clientId = selectedClient._id || selectedClient.id;
+      if (!clientId) {
+        console.error('Client ID required', selectedClient);
+        return;
+      }
+      
+      await organizationService.editClient(clientId, editFormData);
       setShowEditModal(false);
       setSelectedClient(null);
       fetchClients();
     } catch (error) {
       console.error('Failed to update client:', error);
+      alert('Failed to update client. Please check the form and try again.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -124,11 +145,11 @@ export const Clients: React.FC = () => {
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitting(true);
     try {
       const formData = new FormData();
       formData.append('name', addFormData.name);
       formData.append('email', addFormData.email);
-      formData.append('password', addFormData.password);
       formData.append('role', addFormData.role);
       formData.append('phone', addFormData.phone);
       formData.append('route', addFormData.route);
@@ -137,6 +158,11 @@ export const Clients: React.FC = () => {
       formData.append('clientType', addFormData.clientType);
       formData.append('serviceStartDate', addFormData.serviceStartDate);
       formData.append('monthlyRate', addFormData.monthlyRate.toString());
+      
+      // Only send numberOfUnits if client type is commercial
+      if (addFormData.clientType === 'commercial') {
+        formData.append('numberOfUnits', addFormData.numberOfUnits.toString());
+      }
       
       if (addFormData.documents) {
         formData.append('documents', addFormData.documents);
@@ -148,11 +174,11 @@ export const Clients: React.FC = () => {
         name: '',
         email: '',
         phone: '',
-        password: '',
         address: '',
         route: '',
         pickUpDay: '',
         monthlyRate: 0,
+        numberOfUnits: 1,
         isActive: true,
         role: 'client',
         clientType: 'residential',
@@ -162,6 +188,9 @@ export const Clients: React.FC = () => {
       fetchClients();
     } catch (error) {
       console.error('Failed to create client:', error);
+      alert('Failed to create client. Please check the form and try again.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -261,7 +290,6 @@ export const Clients: React.FC = () => {
                       </div>
                       <div>
                         <p className="text-sm font-medium text-gray-900">{client.name}</p>
-                        <p className="text-sm text-gray-500">ID: {client._id?.slice(-6)?.toUpperCase() || 'N/A'}</p>
                       </div>
                     </div>
                   </td>
@@ -269,7 +297,14 @@ export const Clients: React.FC = () => {
                   <td className="px-6 py-4 text-sm text-gray-900">{client.phone}</td>
                   <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">{client.address}</td>
                   <td className="px-6 py-4 text-sm text-gray-900 capitalize">{client.pickUpDay}</td>
-                  <td className="px-6 py-4 text-sm font-medium text-green-600">KSH {client.monthlyRate?.toLocaleString() || 'N/A'}</td>
+                  <td className="px-6 py-4 text-sm font-medium text-green-600">
+                    KSH {client.monthlyRate?.toLocaleString() || 'N/A'}
+                    {client.clientType === 'commercial' && client.numberOfUnits && client.numberOfUnits > 1 && (
+                      <span className="block text-xs text-gray-500">
+                        ({client.numberOfUnits} units @ KSH {(client.monthlyRate / client.numberOfUnits).toLocaleString()} each)
+                      </span>
+                    )}
+                  </td>
                   <td className="px-6 py-4">
                     <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
                       client.isActive 
@@ -437,6 +472,57 @@ export const Clients: React.FC = () => {
                 </select>
               </div>
               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Client Type</label>
+                <select
+                  value={editFormData.clientType}
+                  onChange={(e) => setEditFormData({ ...editFormData, clientType: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors"
+                  required
+                >
+                  <option value="residential">Residential</option>
+                  <option value="commercial">Commercial</option>
+                </select>
+              </div>
+              
+              {/* Number of Units field - only shown for commercial clients */}
+              {editFormData.clientType === 'commercial' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Number of Units</label>
+                  <input
+                    type="number"
+                    value={editFormData.numberOfUnits}
+                    onChange={(e) => setEditFormData({ 
+                      ...editFormData, 
+                      numberOfUnits: parseInt(e.target.value) || 1 
+                    })}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors"
+                    required
+                    min="1"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">For commercial clients, monthly rate is per unit</p>
+                </div>
+              )}
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  {editFormData.clientType === 'commercial' ? 'Monthly Rate per Unit (KSH)' : 'Monthly Rate (KSH)'}
+                </label>
+                <input
+                  type="number"
+                  value={editFormData.monthlyRate}
+                  onChange={(e) => setEditFormData({ ...editFormData, monthlyRate: parseFloat(e.target.value) || 0 })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors"
+                  required
+                  min="0"
+                />
+                {editFormData.clientType === 'commercial' && editFormData.numberOfUnits > 1 && (
+                  <p className="text-sm text-gray-600 mt-1">
+                    Total Monthly Rate: KSH {(editFormData.monthlyRate * editFormData.numberOfUnits).toLocaleString()}
+                  </p>
+                )}
+              </div>
+              
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
                 <select
                   value={editFormData.isActive.toString()}
@@ -450,9 +536,20 @@ export const Clients: React.FC = () => {
               <div className="flex gap-3 pt-4">
                 <button 
                   type="submit" 
-                  className="flex-1 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white py-3 rounded-lg font-medium transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+                  disabled={submitting}
+                  className="flex-1 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white py-3 rounded-lg font-medium transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center"
                 >
-                  Update Client
+                  {submitting ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Updating...
+                    </>
+                  ) : (
+                    'Update Client'
+                  )}
                 </button>
                 <button
                   type="button"
@@ -513,17 +610,7 @@ export const Clients: React.FC = () => {
                   required
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
-                <input
-                  type="password"
-                  value={addFormData.password}
-                  onChange={(e) => setAddFormData({ ...addFormData, password: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors"
-                  required
-                  minLength={6}
-                />
-              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Address</label>
                 <textarea
@@ -578,9 +665,27 @@ export const Clients: React.FC = () => {
                 >
                   <option value="residential">Residential</option>
                   <option value="commercial">Commercial</option>
-                  <option value="industrial">Industrial</option>
                 </select>
               </div>
+              
+              {/* Number of Units field - only shown for commercial clients */}
+              {addFormData.clientType === 'commercial' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Number of Units</label>
+                  <input
+                    type="number"
+                    value={addFormData.numberOfUnits}
+                    onChange={(e) => setAddFormData({ 
+                      ...addFormData, 
+                      numberOfUnits: parseInt(e.target.value) || 1 
+                    })}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors"
+                    required
+                    min="1"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">For commercial clients, monthly rate is per unit</p>
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Service Start Date</label>
                 <input
@@ -592,7 +697,9 @@ export const Clients: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Monthly Rate (KSH)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  {addFormData.clientType === 'commercial' ? 'Monthly Rate per Unit (KSH)' : 'Monthly Rate (KSH)'}
+                </label>
                 <input
                   type="number"
                   value={addFormData.monthlyRate}
@@ -601,6 +708,11 @@ export const Clients: React.FC = () => {
                   required
                   min="0"
                 />
+                {addFormData.clientType === 'commercial' && addFormData.numberOfUnits > 1 && (
+                  <p className="text-sm text-gray-600 mt-1">
+                    Total Monthly Rate: KSH {(addFormData.monthlyRate * addFormData.numberOfUnits).toLocaleString()}
+                  </p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Documents (Optional)</label>
@@ -626,9 +738,20 @@ export const Clients: React.FC = () => {
               <div className="flex gap-3 pt-4">
                 <button 
                   type="submit" 
-                  className="flex-1 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white py-3 rounded-lg font-medium transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+                  disabled={submitting}
+                  className="flex-1 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white py-3 rounded-lg font-medium transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center"
                 >
-                  Add Client
+                  {submitting ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Adding...
+                    </>
+                  ) : (
+                    'Add Client'
+                  )}
                 </button>
                 <button
                   type="button"
