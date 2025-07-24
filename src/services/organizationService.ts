@@ -2,7 +2,7 @@ import axios from "axios";
 
 const api = axios.create({
   // baseURL: "https://garbagesystem.onrender.com/api",
-  baseURL: "http://192.168.0.115:5000/api",
+  baseURL: "http://localhost:5000/api",
   timeout: 10000,
   withCredentials: true,
   headers: {
@@ -124,6 +124,15 @@ export const organizationService = {
     
   getDriverDetails: (driverId: string) =>
     api.get(`/auth/driver/${driverId}`),
+
+  getClientDetails: (clientId: string) =>
+    api.get(`/auth/client/${clientId}`),
+
+  getClientPayments: (clientId: string, params?: { page?: number; limit?: number; startDate?: string; endDate?: string }) =>
+    api.get(`/payments/client/${clientId}/payments`, { params }),
+
+  getClientInvoices: (clientId: string, params?: { page?: number; limit?: number; status?: string; startDate?: string; endDate?: string }) =>
+    api.get(`/invoices/client/${clientId}`, { params }),
 
   // Route Management
   createRoute: (routeData: any) =>

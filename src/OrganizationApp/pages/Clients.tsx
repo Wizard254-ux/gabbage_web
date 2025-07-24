@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { organizationService } from '../../services/organizationService';
+import ClientDetailsModal from '../components/ClientDetailsModal';
 
 interface Client {
   _id: string;
@@ -11,6 +12,8 @@ interface Client {
   pickUpDay: string;
   isActive: boolean;
   monthlyRate: number;
+  id: string;
+  accountNumber: string;
 }
 
 export const Clients: React.FC = () => {
@@ -19,6 +22,7 @@ export const Clients: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showDropdown, setShowDropdown] = useState<string | null>(null);
@@ -66,6 +70,7 @@ export const Clients: React.FC = () => {
   const fetchClients = async () => {
     try {
       const response = await organizationService.listClients();
+      console.log('Fetched clients:', response.data.users); 
       setClients(response.data.users || []);
     } catch (error) {
       console.error('Failed to fetch clients:', error);
@@ -95,6 +100,11 @@ export const Clients: React.FC = () => {
       isActive: client.isActive,
     });
     setShowEditModal(true);
+  };
+
+  const handleViewDetails = (client: Client) => {
+    setSelectedClient(client);
+    setShowDetailsModal(true);
   };
 
   const handleUpdate = async (e: React.FormEvent) => {
@@ -241,6 +251,7 @@ export const Clients: React.FC = () => {
               <tr>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">#</th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Client</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Account No</th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Email</th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Phone</th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Address</th>
@@ -256,15 +267,12 @@ export const Clients: React.FC = () => {
                   <td className="px-6 py-4 text-sm font-medium text-gray-900">{index + 1}</td>
                   <td className="px-6 py-4">
                     <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
-                        {client.name.charAt(0).toUpperCase()}
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">{client.name}</p>
-                        <p className="text-sm text-gray-500">ID: {client._id?.slice(-6)?.toUpperCase() || 'N/A'}</p>
-                      </div>
+                        {client.name}
+                      
+         
                     </div>
                   </td>
+                  <td className="px-6 py-4 text-sm text-gray-900">{client.accountNumber}</td>
                   <td className="px-6 py-4 text-sm text-gray-900">{client.email}</td>
                   <td className="px-6 py-4 text-sm text-gray-900">{client.phone}</td>
                   <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">{client.address}</td>
@@ -283,7 +291,17 @@ export const Clients: React.FC = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm relative">
-                    <div className="relative">
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => handleViewDetails(client)}
+                        className="text-blue-600 hover:text-blue-800 transition-colors p-1 rounded hover:bg-blue-50 flex items-center"
+                      >
+                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                        <span className="text-xs">View</span>
+                      </button>
                       <button
                         onClick={() => setShowDropdown(showDropdown === client._id ? null : client._id)}
                         className="text-gray-400 hover:text-gray-600 transition-colors p-2 rounded-full hover:bg-gray-100"
@@ -296,6 +314,21 @@ export const Clients: React.FC = () => {
                       {showDropdown === client._id && (
                         <div className="dropdown-menu absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
                           <div className="py-2">
+                            <button
+                              onClick={() => {
+                                handleViewDetails(client);
+                                setShowDropdown(null);
+                              }}
+                              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                              <span>View Details</span>
+                            </button>
+
+                            <div className="border-t border-gray-100 my-1"></div>
                             <button
                               onClick={() => {
                                 handleEdit(client);
@@ -465,6 +498,14 @@ export const Clients: React.FC = () => {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Details Modal */}
+      {showDetailsModal && selectedClient && (
+        <ClientDetailsModal
+          clientId={selectedClient.id}
+          onClose={() => setShowDetailsModal(false)}
+        />
       )}
 
       {/* Add Modal */}
