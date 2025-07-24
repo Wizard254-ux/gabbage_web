@@ -258,7 +258,19 @@ export const organizationService = {
     endDate?: string;
     accountNumber?: string;
   }) =>
-    api.get("/invoices", { params }),
+    api.get("/auth/invoices", { params }),
+    
+  getInvoiceById: (invoiceId: string) =>
+    api.get(`/invoices/${invoiceId}`),
+    
+  createInvoice: (invoiceData: {
+    userId: string;
+    totalAmount: number;
+    dueDate: string;
+    billingPeriod: { start: string; end: string };
+  }) => api.post("/invoices", invoiceData),
+    
+  deleteInvoice: (id: string) => api.delete(`/invoices/${id}`),
     
   // Payment History
   getAllPaymentHistory: (params?: {
