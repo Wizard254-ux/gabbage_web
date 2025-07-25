@@ -127,6 +127,18 @@ export const organizationService = {
       updateData
     }),
 
+  editDriverWithDocuments: (userId: string, formData: FormData) =>
+    api.put(`/auth/driver/${userId}`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }),
+
+  deleteDriverDocument: (userId: string, documentPath: string) =>
+    api.delete(`/auth/driver/${userId}/document`, {
+      data: { documentPath }
+    }),
+
   editClient: (userId: string, updateData: any) =>
     api.post("/auth/organization/users/manage", {
       action: "edit",
@@ -291,6 +303,17 @@ export const organizationService = {
     accountNumber?: string;
   }) =>
     api.get("/auth/invoices", { params }),
+    
+  getAgingSummary: (params?: {
+    page?: number;
+    limit?: number;
+    paymentStatus?: string;
+    dueStatus?: string;
+    startDate?: string;
+    endDate?: string;
+    accountNumber?: string;
+  }) =>
+    api.get("/invoices/aging-summary", { params }),
     
   getInvoiceById: (invoiceId: string) =>
     api.get(`/invoices/${invoiceId}`),

@@ -9,6 +9,7 @@ interface Client {
   phone: string;
   address: string;
   route: string;
+  routeId?: string;
   pickUpDay: string;
   isActive: boolean;
   monthlyRate: number;
@@ -102,7 +103,7 @@ export const Clients: React.FC = () => {
       email: client.email,
       phone: client.phone,
       address: client.address,
-      route: client.route,
+      route: client.route || client.routeId,
       isActive: client.isActive,
       clientType: client.clientType || 'residential',
       monthlyRate: client.monthlyRate || 0,
@@ -163,7 +164,6 @@ export const Clients: React.FC = () => {
       formData.append('role', addFormData.role);
       formData.append('phone', addFormData.phone);
       formData.append('route', addFormData.route);
-      // pickUpDay is now calculated from serviceStartDate
       formData.append('address', addFormData.address);
       formData.append('clientType', addFormData.clientType);
       formData.append('serviceStartDate', addFormData.serviceStartDate);

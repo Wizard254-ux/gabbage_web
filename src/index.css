@@ -1,1 +1,10 @@
 @import "tailwindcss";
+
+/* Custom styles for aging summary */
+.bg-red-25 {
+  background-color: #fef2f2;
+}
+
+.bg-yellow-25 {
+  background-color: #fffbeb;
+}

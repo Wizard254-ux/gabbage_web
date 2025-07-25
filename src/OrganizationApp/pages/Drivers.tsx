@@ -27,18 +27,24 @@ export const Drivers: React.FC = () => {
   const [successMessage, setSuccessMessage] = useState('');
   const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isDocumentEditMode, setIsDocumentEditMode] = useState(false);
   const [editFormData, setEditFormData] = useState({
     name: '',
     email: '',
     phone: '',
     isActive: true,
   });
+  const [editDocumentsFiles, setEditDocumentsFiles] = useState<FileList | null>(null);
+  const [documentsToDelete, setDocumentsToDelete] = useState<string[]>([]);
+  const [updatingDriver, setUpdatingDriver] = useState(false);
   const [addFormData, setAddFormData] = useState({
     name: '',
     email: '',
     phone: ''
   });
   const [documentsFiles, setDocumentsFiles] = useState<FileList | null>(null);
+  const [newDocumentsFiles, setNewDocumentsFiles] = useState<FileList | null>(null);
+  const [addingNewDocuments, setAddingNewDocuments] = useState(false);
 
   useEffect(() => {
     fetchDrivers();
@@ -69,7 +75,7 @@ export const Drivers: React.FC = () => {
     }
   };
 
-  const handleEdit = (driver: Driver) => {
+  const handleEdit = async (driver: Driver) => {
     setSelectedDriver(driver);
     setEditFormData({
       name: driver.name,
@@ -77,21 +83,65 @@ export const Drivers: React.FC = () => {
       phone: driver.phone,
       isActive: driver.isActive,
     });
+    setDocumentsToDelete([]);
+    setEditDocumentsFiles(null);
+    
+    // Fetch full driver details including documents
+    try {
+      const response = await organizationService.getDriverDetails(driver.id);
+      if (response.data && response.data.user) {
+        const driverWithDocs = {
+          ...driver,
+          ...response.data.user,
+          documents: response.data.user.documents || []
+        };
+        setSelectedDriver(driverWithDocs);
+      }
+    } catch (error) {
+      console.error('Failed to fetch driver details:', error);
+    }
+    
     setShowEditModal(true);
   };
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedDriver) return;
-    console.log('selectde driver ',selectedDriver)
-
+    
+    setUpdatingDriver(true);
     try {
-      await organizationService.editDriver(selectedDriver.id, editFormData);
+      const formData = new FormData();
+      formData.append('name', editFormData.name);
+      formData.append('email', editFormData.email);
+      formData.append('phone', editFormData.phone);
+      formData.append('isActive', editFormData.isActive.toString());
+      
+      // Add documents to delete
+      documentsToDelete.forEach(docPath => {
+        formData.append('documentsToDelete', docPath);
+      });
+      
+      // Add new documents
+      if (editDocumentsFiles) {
+        for (let i = 0; i < editDocumentsFiles.length; i++) {
+          formData.append('documents', editDocumentsFiles[i]);
+        }
+      }
+      
+      await organizationService.editDriverWithDocuments(selectedDriver.id, formData);
       setShowEditModal(false);
       setSelectedDriver(null);
+      setDocumentsToDelete([]);
+      setEditDocumentsFiles(null);
       fetchDrivers();
+      
+      setSuccessMessage('Driver updated successfully!');
+      setShowSuccessModal(true);
     } catch (error) {
       console.error('Failed to update driver:', error);
+      alert('Failed to update driver. Please try again.');
+    } finally {
+      setUpdatingDriver(false);
     }
   };
 
@@ -125,6 +175,7 @@ export const Drivers: React.FC = () => {
     setShowActionModal(false);
     setShowDetailsModal(true);
     setLoadingDriverDetails(true);
+    setIsDocumentEditMode(false); // Reset to view mode
     setSelectedDriver(driver); // Set initial data to show basic info while loading
     
     try {
@@ -145,6 +196,67 @@ export const Drivers: React.FC = () => {
       console.error('Failed to fetch driver details:', error);
     } finally {
       setLoadingDriverDetails(false);
+    }
+  };
+  
+  const handleDeleteDocument = async (driverId: string, documentPath: string) => {
+    if (window.confirm('Are you sure you want to delete this document?')) {
+      try {
+        await organizationService.deleteDriverDocument(driverId, documentPath);
+        
+        // Refresh driver details
+        const response = await organizationService.getDriverDetails(driverId);
+        if (response.data && response.data.user && selectedDriver) {
+          const updatedDriver = {
+            ...selectedDriver,
+            ...response.data.user,
+            documents: response.data.user.documents || []
+          };
+          setSelectedDriver(updatedDriver);
+        }
+        
+        setSuccessMessage('Document deleted successfully!');
+        setShowSuccessModal(true);
+      } catch (error) {
+        console.error('Failed to delete document:', error);
+        alert('Failed to delete document. Please try again.');
+      }
+    }
+  };
+
+  const handleAddNewDocuments = async () => {
+    if (!selectedDriver || !newDocumentsFiles) return;
+    
+    setAddingNewDocuments(true);
+    try {
+      const formData = new FormData();
+      
+      // Add new documents
+      for (let i = 0; i < newDocumentsFiles.length; i++) {
+        formData.append('documents', newDocumentsFiles[i]);
+      }
+      
+      await organizationService.editDriverWithDocuments(selectedDriver.id, formData);
+      
+      // Refresh driver details
+      const response = await organizationService.getDriverDetails(selectedDriver.id);
+      if (response.data && response.data.user) {
+        const updatedDriver = {
+          ...selectedDriver,
+          ...response.data.user,
+          documents: response.data.user.documents || []
+        };
+        setSelectedDriver(updatedDriver);
+      }
+      
+      setNewDocumentsFiles(null);
+      setSuccessMessage('Documents added successfully!');
+      setShowSuccessModal(true);
+    } catch (error) {
+      console.error('Failed to add documents:', error);
+      alert('Failed to add documents. Please try again.');
+    } finally {
+      setAddingNewDocuments(false);
     }
   };
 
@@ -398,7 +510,7 @@ export const Drivers: React.FC = () => {
       {/* Edit Modal */}
       {showEditModal && selectedDriver && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl max-w-md w-full p-8 shadow-2xl">
+          <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-8 shadow-2xl">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-2xl font-bold text-gray-900">Edit Driver</h3>
               <button
@@ -411,58 +523,153 @@ export const Drivers: React.FC = () => {
               </button>
             </div>
             <form onSubmit={handleUpdate} className="space-y-6">
+              {/* Basic Information */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+                  <input
+                    type="text"
+                    value={editFormData.name}
+                    onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+                  <input
+                    type="email"
+                    value={editFormData.email}
+                    onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
+                  <input
+                    type="tel"
+                    value={editFormData.phone}
+                    onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                  <select
+                    value={editFormData.isActive.toString()}
+                    onChange={(e) => setEditFormData({ ...editFormData, isActive: e.target.value === 'true' })}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                  >
+                    <option value="true">Active</option>
+                    <option value="false">Inactive</option>
+                  </select>
+                </div>
+              </div>
+              
+              {/* Current Documents */}
+              {selectedDriver?.documents && selectedDriver.documents.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Current Documents</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {selectedDriver.documents.map((doc, index) => {
+                      const fileName = doc.split('/').pop() || `Document ${index + 1}`;
+                      const isMarkedForDeletion = documentsToDelete.includes(doc);
+                      
+                      return (
+                        <div key={`edit-doc-${index}`} className={`border rounded-lg p-3 flex items-center justify-between ${
+                          isMarkedForDeletion ? 'bg-red-50 border-red-200' : 'border-gray-200'
+                        }`}>
+                          <div className="flex items-center space-x-2">
+                            <svg className="w-5 h-5 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd"></path>
+                            </svg>
+                            <span className={`text-sm truncate ${
+                              isMarkedForDeletion ? 'text-red-600 line-through' : 'text-gray-700'
+                            }`}>
+                              {fileName}
+                            </span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <a 
+                              href={doc} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-blue-500 hover:text-blue-700 text-xs"
+                            >
+                              View
+                            </a>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (isMarkedForDeletion) {
+                                  setDocumentsToDelete(prev => prev.filter(d => d !== doc));
+                                } else {
+                                  setDocumentsToDelete(prev => [...prev, doc]);
+                                }
+                              }}
+                              className={`text-xs px-2 py-1 rounded ${
+                                isMarkedForDeletion 
+                                  ? 'bg-gray-200 text-gray-600 hover:bg-gray-300' 
+                                  : 'bg-red-100 text-red-600 hover:bg-red-200'
+                              }`}
+                            >
+                              {isMarkedForDeletion ? 'Undo' : 'Delete'}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {documentsToDelete.length > 0 && (
+                    <p className="text-sm text-red-600 mt-2">
+                      {documentsToDelete.length} document(s) will be deleted
+                    </p>
+                  )}
+                </div>
+              )}
+              
+              {/* Add New Documents */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Add New Documents</label>
                 <input
-                  type="text"
-                  value={editFormData.name}
-                  onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                  type="file"
+                  onChange={(e) => setEditDocumentsFiles(e.target.files)}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                  required
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                  multiple
                 />
+                <p className="text-sm text-gray-500 mt-1">Upload additional documents (optional)</p>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
-                <input
-                  type="email"
-                  value={editFormData.email}
-                  onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
-                <input
-                  type="tel"
-                  value={editFormData.phone}
-                  onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-                <select
-                  value={editFormData.isActive.toString()}
-                  onChange={(e) => setEditFormData({ ...editFormData, isActive: e.target.value === 'true' })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                >
-                  <option value="true">Active</option>
-                  <option value="false">Inactive</option>
-                </select>
-              </div>
+              
               <div className="flex gap-3 pt-4">
                 <button 
                   type="submit" 
-                  className="flex-1 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white py-3 rounded-lg font-medium transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+                  disabled={updatingDriver}
+                  className="flex-1 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white py-3 rounded-lg font-medium transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                 >
-                  Update Driver
+                  {updatingDriver ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Updating...
+                    </>
+                  ) : (
+                    'Update Driver'
+                  )}
                 </button>
                 <button
                   type="button"
-                  onClick={() => setShowEditModal(false)}
-                  className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-3 rounded-lg font-medium transition-colors"
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setDocumentsToDelete([]);
+                    setEditDocumentsFiles(null);
+                  }}
+                  disabled={updatingDriver}
+                  className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-3 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Cancel
                 </button>
@@ -565,14 +772,26 @@ export const Drivers: React.FC = () => {
               
               {/* Documents Section */}
               <div className="mt-8">
-                <h5 className="text-lg font-medium text-gray-900 mb-4">Documents</h5>
+                <div className="flex items-center justify-between mb-4">
+                  <h5 className="text-lg font-medium text-gray-900">Documents</h5>
+                  <button
+                    onClick={() => setIsDocumentEditMode(!isDocumentEditMode)}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      isDocumentEditMode 
+                        ? 'bg-gray-200 text-gray-700 hover:bg-gray-300' 
+                        : 'bg-blue-500 text-white hover:bg-blue-600'
+                    }`}
+                  >
+                    {isDocumentEditMode ? 'Cancel Edit' : 'Edit Documents'}
+                  </button>
+                </div>
                 {loadingDriverDetails ? (
                   <div className="flex items-center justify-center py-12">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
                     <span className="ml-3 text-gray-600">Loading documents...</span>
                   </div>
                 ) : selectedDriver.documents && selectedDriver.documents.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     {selectedDriver.documents.map((doc, index) => {
                       const fileName = doc.split('/').pop() || `Document ${index + 1}`;
                       const fileExt = fileName.split('.').pop()?.toLowerCase() || '';
@@ -581,81 +800,92 @@ export const Drivers: React.FC = () => {
                       const isDoc = /(doc|docx)$/i.test(fileExt);
                       
                       return (
-                        <div key={`doc-${index}-${fileName}`} className="border border-gray-200 rounded-lg p-3 flex flex-col items-center hover:shadow-lg transition-shadow">
-                          <div className="w-full h-48 bg-gray-100 rounded-md flex items-center justify-center mb-2 overflow-hidden">
+                        <div key={`doc-${index}-${fileName}`} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+                          {/* Document Preview */}
+                          <div className="w-full h-40 bg-gray-50 rounded-lg flex items-center justify-center mb-4 overflow-hidden relative">
                             {isImage ? (
                               <img 
                                 src={doc} 
                                 alt={fileName} 
-                                className="max-h-full max-w-full object-contain rounded-md hover:scale-105 transition-transform" 
+                                className="max-h-full max-w-full object-contain rounded-lg" 
                                 onError={(e) => {
-                                  // Fallback if image fails to load
-                                  e.currentTarget.onerror = null;
-                                  e.currentTarget.style.display = 'none';
+                                  const target = e.currentTarget as HTMLImageElement;
+                                  target.style.display = 'none';
+                                  const parent = target.parentElement;
+                                  if (parent) {
+                                    parent.innerHTML = `
+                                      <div class="flex flex-col items-center justify-center text-gray-400">
+                                        <svg class="w-12 h-12 mb-2" fill="currentColor" viewBox="0 0 20 20">
+                                          <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd"></path>
+                                        </svg>
+                                        <span class="text-sm">Image Preview</span>
+                                      </div>
+                                    `;
+                                  }
                                 }}
                               />
                             ) : isPdf ? (
-                              <div className="w-full h-full flex flex-col items-center justify-center">
-                                <iframe 
-                                  src={`${doc}#toolbar=0&navpanes=0`} 
-                                  className="w-full h-36 border-0" 
-                                  title={fileName}
-                                  onError={() => console.error(`Failed to load PDF: ${doc}`)}
-                                />
-                                <span className="mt-1 text-xs font-medium text-gray-700 bg-gray-100 px-2 py-1 rounded">
-                                  PDF Preview
-                                </span>
+                              <div className="flex flex-col items-center justify-center text-red-500">
+                                <svg className="w-12 h-12 mb-2" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd"></path>
+                                </svg>
+                                <span className="text-sm font-medium">PDF Document</span>
                               </div>
                             ) : isDoc ? (
-                              <div className="flex flex-col items-center justify-center">
-                                <svg className="w-16 h-16 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                              <div className="flex flex-col items-center justify-center text-blue-500">
+                                <svg className="w-12 h-12 mb-2" fill="currentColor" viewBox="0 0 20 20">
                                   <path d="M9 2a2 2 0 00-2 2v8a2 2 0 002 2h6a2 2 0 002-2V6.414A2 2 0 0016.414 5L14 2.586A2 2 0 0012.586 2H9z" />
                                   <path d="M3 8a2 2 0 012-2v10h8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z" />
                                 </svg>
-                                <span className="mt-2 text-sm font-medium text-gray-700">Word Document</span>
+                                <span className="text-sm font-medium">Word Document</span>
                               </div>
                             ) : (
-                              <div className="flex flex-col items-center justify-center">
-                                {fileExt === 'txt' ? (
-                                  <svg className="w-16 h-16 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd"></path>
-                                  </svg>
-                                ) : fileExt === 'csv' || fileExt === 'xlsx' || fileExt === 'xls' ? (
-                                  <svg className="w-16 h-16 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M5 4a3 3 0 00-3 3v6a3 3 0 003 3h10a3 3 0 003-3V7a3 3 0 00-3-3H5zm-1 9v-1h5v2H5a1 1 0 01-1-1zm7 1h4a1 1 0 001-1v-1h-5v2zm0-4h5V8h-5v2zM9 8H4v2h5V8z" clipRule="evenodd"></path>
-                                  </svg>
-                                ) : (
-                                  <svg className="w-16 h-16 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd"></path>
-                                  </svg>
-                                )}
-                                <span className="mt-2 text-sm font-medium text-gray-700">
-                                  {fileExt.toUpperCase()} File
+                              <div className="flex flex-col items-center justify-center text-gray-400">
+                                <svg className="w-12 h-12 mb-2" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd"></path>
+                                </svg>
+                                <span className="text-sm font-medium">
+                                  {fileExt.toUpperCase() || 'FILE'}
                                 </span>
                               </div>
                             )}
                           </div>
-                          <div className="text-center w-full">
-                            <p className="text-sm font-medium text-gray-800 truncate w-full mb-2">
+                          
+                          {/* File Name */}
+                          <div className="mb-3">
+                            <h6 className="text-sm font-medium text-gray-900 truncate" title={fileName}>
                               {fileName}
+                            </h6>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {fileExt.toUpperCase()} File
                             </p>
-                            <div className="flex justify-center space-x-2">
-                              <a 
-                                href={doc} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="text-xs bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-md inline-block transition-colors"
+                          </div>
+                          
+                          {/* Action Buttons */}
+                          <div className="flex flex-wrap gap-2">
+                            <a 
+                              href={doc} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="flex-1 min-w-0 text-center text-xs bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg transition-colors"
+                            >
+                              View
+                            </a>
+                            <a 
+                              href={doc} 
+                              download={fileName}
+                              className="flex-1 min-w-0 text-center text-xs bg-gray-500 hover:bg-gray-600 text-white px-3 py-2 rounded-lg transition-colors"
+                            >
+                              Download
+                            </a>
+                            {isDocumentEditMode && (
+                              <button
+                                onClick={() => handleDeleteDocument(selectedDriver._id, doc)}
+                                className="flex-1 min-w-0 text-xs bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg transition-colors"
                               >
-                                View
-                              </a>
-                              <a 
-                                href={doc} 
-                                download={fileName}
-                                className="text-xs bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded-md inline-block transition-colors"
-                              >
-                                Download
-                              </a>
-                            </div>
+                                Delete
+                              </button>
+                            )}
                           </div>
                         </div>
                       );
@@ -669,11 +899,56 @@ export const Drivers: React.FC = () => {
                     <p className="mt-2 text-sm text-gray-500">No documents uploaded</p>
                   </div>
                 )}
+                
+                {/* Add New Documents Section - Only in Edit Mode */}
+                {isDocumentEditMode && (
+                  <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <h6 className="text-sm font-medium text-gray-900 mb-3">Add New Documents</h6>
+                    <div className="space-y-3">
+                      <input
+                        type="file"
+                        onChange={(e) => setNewDocumentsFiles(e.target.files)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-sm"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        multiple
+                      />
+                      <p className="text-xs text-gray-600">Upload driver documents (PDF, Word, Images)</p>
+                      {newDocumentsFiles && newDocumentsFiles.length > 0 && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-700">
+                            {newDocumentsFiles.length} file(s) selected
+                          </span>
+                          <button
+                            onClick={handleAddNewDocuments}
+                            disabled={addingNewDocuments}
+                            className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white text-sm rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                          >
+                            {addingNewDocuments ? (
+                              <>
+                                <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <span>Adding...</span>
+                              </>
+                            ) : (
+                              <span>Add Documents</span>
+                            )}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
               
               <div style={{paddingTop: '1rem'}}>
                 <button
-                  onClick={() => setShowDetailsModal(false)}
+                  onClick={() => {
+                    setShowDetailsModal(false);
+                    setIsDocumentEditMode(false);
+                    setNewDocumentsFiles(null);
+                  }}
                   className="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 py-3 rounded-lg font-medium transition-colors"
                 >
                   Close

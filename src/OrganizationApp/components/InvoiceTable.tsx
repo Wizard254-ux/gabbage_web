@@ -31,13 +31,15 @@ interface InvoiceTableProps {
   currentPage: number;
   totalPages: number;
   onPageChange: (page: number) => void;
+  showAgingInfo?: boolean;
 }
 
 export const InvoiceTable: React.FC<InvoiceTableProps> = ({ 
   invoices, 
   currentPage, 
   totalPages, 
-  onPageChange 
+  onPageChange,
+  showAgingInfo = false
 }) => {
   // Function to format date
   const formatDate = (dateString: string) => {
@@ -148,32 +150,72 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
             </tr>
           </thead>
           <tbody>
-            {invoices.map((invoice, index) => (
-              <tr key={invoice._id} className="hover:bg-gray-50">
-                <td className="py-3 px-4 border-b">{startIndex + index + 1}</td>
-                <td className="py-3 px-4 border-b font-medium">{invoice.invoiceNumber}</td>
-                <td className="py-3 px-4 border-b">{invoice.userId.name}</td>
-                <td className="py-3 px-4 border-b">{invoice.accountNumber}</td>
-                <td className="py-3 px-4 border-b">
-                  {formatDate(invoice.billingPeriod.start)} - {formatDate(invoice.billingPeriod.end)}
-                </td>
-                <td className="py-3 px-4 border-b">{formatDate(invoice.issuedDate)}</td>
-                <td className="py-3 px-4 border-b">{formatDate(invoice.dueDate)}</td>
-                <td className="py-3 px-4 border-b">KES {invoice.totalAmount.toLocaleString()}</td>
-                <td className="py-3 px-4 border-b">KES {invoice.amountPaid.toLocaleString()}</td>
-                <td className="py-3 px-4 border-b">KES {invoice.remainingBalance.toLocaleString()}</td>
-                <td className="py-3 px-4 border-b">
-                  <span className={`px-2 py-1 text-xs rounded-full ${getPaymentStatusBadge(invoice.paymentStatus || invoice.status)}`}>
-                    {formatPaymentStatus(invoice.paymentStatus || invoice.status)}
-                  </span>
-                </td>
-                <td className="py-3 px-4 border-b">
-                  <span className={`px-2 py-1 text-xs rounded-full ${getDueStatusBadge(invoice.dueStatus || (invoice.status === 'overdue' ? 'overdue' : 'due'))}`}>
-                    {formatDueStatus(invoice.dueStatus || (invoice.status === 'overdue' ? 'overdue' : 'due'))}
-                  </span>
-                </td>
-              </tr>
-            ))}
+            {invoices.map((invoice, index) => {
+              const isOverdue = (invoice.dueStatus || invoice.status) === 'overdue';
+              const isDue = (invoice.dueStatus || invoice.status) === 'due';
+              const rowClass = showAgingInfo 
+                ? isOverdue 
+                  ? 'hover:bg-red-50 bg-red-25' 
+                  : isDue 
+                  ? 'hover:bg-yellow-50 bg-yellow-25' 
+                  : 'hover:bg-gray-50'
+                : 'hover:bg-gray-50';
+              
+              return (
+                <tr key={invoice._id} className={rowClass}>
+                  <td className="py-3 px-4 border-b">{startIndex + index + 1}</td>
+                  <td className="py-3 px-4 border-b font-medium">
+                    {invoice.invoiceNumber}
+                    {showAgingInfo && isOverdue && (
+                      <span className="ml-2 text-red-500 text-xs">⚠️</span>
+                    )}
+                  </td>
+                  <td className="py-3 px-4 border-b">{invoice.userId.name}</td>
+                  <td className="py-3 px-4 border-b">{invoice.accountNumber}</td>
+                  <td className="py-3 px-4 border-b">
+                    {formatDate(invoice.billingPeriod.start)} - {formatDate(invoice.billingPeriod.end)}
+                  </td>
+                  <td className="py-3 px-4 border-b">{formatDate(invoice.issuedDate)}</td>
+                  <td className={`py-3 px-4 border-b ${showAgingInfo && isOverdue ? 'text-red-600 font-semibold' : ''}`}>
+                    {formatDate(invoice.dueDate)}
+                    {showAgingInfo && (
+                      <div className="text-xs text-gray-500 mt-1">
+                        {(() => {
+                          const dueDate = new Date(invoice.dueDate);
+                          const today = new Date();
+                          const diffTime = today.getTime() - dueDate.getTime();
+                          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                          
+                          if (diffDays > 0) {
+                            return `${diffDays} days overdue`;
+                          } else if (diffDays === 0) {
+                            return 'Due today';
+                          } else {
+                            return `${Math.abs(diffDays)} days until due`;
+                          }
+                        })()
+                        }
+                      </div>
+                    )}
+                  </td>
+                  <td className="py-3 px-4 border-b">KES {invoice.totalAmount.toLocaleString()}</td>
+                  <td className="py-3 px-4 border-b">KES {invoice.amountPaid.toLocaleString()}</td>
+                  <td className={`py-3 px-4 border-b font-semibold ${showAgingInfo ? 'text-red-600' : ''}`}>
+                    KES {invoice.remainingBalance.toLocaleString()}
+                  </td>
+                  <td className="py-3 px-4 border-b">
+                    <span className={`px-2 py-1 text-xs rounded-full ${getPaymentStatusBadge(invoice.paymentStatus || invoice.status)}`}>
+                      {formatPaymentStatus(invoice.paymentStatus || invoice.status)}
+                    </span>
+                  </td>
+                  <td className="py-3 px-4 border-b">
+                    <span className={`px-2 py-1 text-xs rounded-full ${getDueStatusBadge(invoice.dueStatus || (invoice.status === 'overdue' ? 'overdue' : 'due'))}`}>
+                      {formatDueStatus(invoice.dueStatus || (invoice.status === 'overdue' ? 'overdue' : 'due'))}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
             {invoices.length === 0 && (
               <tr>
                 <td colSpan={12} className="py-4 text-center text-gray-500">No invoices found</td>
