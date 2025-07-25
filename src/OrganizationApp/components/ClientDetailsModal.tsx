@@ -24,6 +24,7 @@ interface ClientDetails {
   serviceStartDate: string;
   accountNumber: string;
   createdAt: string;
+  gracePeriod: number;
 }
 
 interface Payment {
@@ -35,17 +36,33 @@ interface Payment {
   phoneNumber: string;
   transactionId: string;
   status: string;
+  allocationStatus?: string;
+  allocatedAmount?: number;
+  remainingAmount?: number;
   createdAt: string;
 }
 
 interface Invoice {
   _id: string;
+  invoiceNumber: string;
   accountNumber: string;
+  totalAmount: number;
   amount: number;
+  amountPaid: number;
+  remainingBalance: number;
   status: string;
+  paymentStatus?: string;
+  dueStatus?: string;
   dueDate: string;
+  issuedDate: string;
   createdAt: string;
-  items: Array<{
+  emailSent: boolean;
+  emailSentAt: string;
+  billingPeriod: {
+    start: string;
+    end: string;
+  };
+  items?: Array<{
     description: string;
     amount: number;
   }>;
@@ -136,6 +153,86 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ clientId, onClo
         return 'bg-gray-100 text-gray-800 border border-gray-200';
       default:
         return 'bg-blue-100 text-blue-800 border border-blue-200';
+    }
+  };
+  
+  const getPaymentStatusBadgeClass = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'fully_paid':
+      case 'paid':
+        return 'bg-green-100 text-green-800 border border-green-200';
+      case 'partially_paid':
+      case 'partial':
+        return 'bg-blue-100 text-blue-800 border border-blue-200';
+      case 'unpaid':
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800 border border-yellow-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border border-gray-200';
+    }
+  };
+  
+  const getDueStatusBadgeClass = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'due':
+        return 'bg-yellow-100 text-yellow-800 border border-yellow-200';
+      case 'overdue':
+        return 'bg-red-100 text-red-800 border border-red-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border border-gray-200';
+    }
+  };
+  
+  const formatPaymentStatus = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'fully_paid':
+      case 'paid':
+        return 'Fully Paid';
+      case 'partially_paid':
+      case 'partial':
+        return 'Partially Paid';
+      case 'unpaid':
+      case 'pending':
+        return 'Unpaid';
+      default:
+        return status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' ');
+    }
+  };
+  
+  const formatDueStatus = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'due':
+        return 'Due';
+      case 'overdue':
+        return 'Overdue';
+      default:
+        return status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' ');
+    }
+  };
+  
+  const getAllocationBadgeClass = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'fully_allocated':
+        return 'bg-green-100 text-green-800 border border-green-200';
+      case 'partially_allocated':
+        return 'bg-blue-100 text-blue-800 border border-blue-200';
+      case 'unallocated':
+        return 'bg-yellow-100 text-yellow-800 border border-yellow-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border border-gray-200';
+    }
+  };
+  
+  const formatAllocationStatus = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'fully_allocated':
+        return 'Fully Allocated';
+      case 'partially_allocated':
+        return 'Partially Allocated';
+      case 'unallocated':
+        return 'Unallocated';
+      default:
+        return status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' ');
     }
   };
 
@@ -301,6 +398,17 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ clientId, onClo
                   </div>
                   <div>
                     <h5 className="text-sm font-medium text-gray-500">
+                      Grace Period
+                    </h5>
+                    <p className="text-base text-gray-900">
+                      {client.gracePeriod || 5} days
+                      <span className="text-xs text-gray-500 block mt-1">
+                        Days after billing period before invoice is marked overdue
+                      </span>
+                    </p>
+                  </div>
+                  <div>
+                    <h5 className="text-sm font-medium text-gray-500">
                       Client Since
                     </h5>
                     <p className="text-base text-gray-900">
@@ -337,6 +445,9 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ clientId, onClo
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Status
                           </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Allocation
+                          </th>
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
@@ -364,6 +475,24 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ clientId, onClo
                               >
                                 {payment.status}
                               </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              {payment.allocationStatus ? (
+                                <span
+                                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getAllocationBadgeClass(
+                                    payment.allocationStatus
+                                  )}`}
+                                >
+                                  {formatAllocationStatus(payment.allocationStatus)}
+                                  {payment.allocatedAmount !== undefined && (
+                                    <span className="block text-xs mt-1">
+                                      {payment.allocatedAmount}/{payment.amount} KES
+                                    </span>
+                                  )}
+                                </span>
+                              ) : (
+                                '-'
+                              )}
                             </td>
                           </tr>
                         ))}
@@ -476,13 +605,22 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ clientId, onClo
                                       (invoice.amountPaid || 0)}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
-                                  <span
-                                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClass(
-                                      invoice.status
-                                    )}`}
-                                  >
-                                    {invoice.status}
-                                  </span>
+                                  <div className="flex flex-col space-y-1">
+                                    <span
+                                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPaymentStatusBadgeClass(
+                                        invoice.paymentStatus || invoice.status
+                                      )}`}
+                                    >
+                                      {formatPaymentStatus(invoice.paymentStatus || invoice.status)}
+                                    </span>
+                                    <span
+                                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getDueStatusBadgeClass(
+                                        invoice.dueStatus || (invoice.status === 'overdue' ? 'overdue' : 'due')
+                                      )}`}
+                                    >
+                                      {formatDueStatus(invoice.dueStatus || (invoice.status === 'overdue' ? 'overdue' : 'due'))}
+                                    </span>
+                                  </div>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
                                   <span

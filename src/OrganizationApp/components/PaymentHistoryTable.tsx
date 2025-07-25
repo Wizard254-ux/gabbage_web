@@ -31,6 +31,9 @@ interface Payment {
     invoiceNumber: string;
   };
   status: string;
+  allocationStatus?: string;
+  allocatedAmount?: number;
+  remainingAmount?: number;
   paidAt: string;
   metadata?: {
     payerName: string;
@@ -70,6 +73,34 @@ export const PaymentHistoryTable: React.FC<PaymentHistoryTableProps> = ({
         return 'bg-gray-500 text-white';
     }
   };
+  
+  // Function to get allocation status badge color
+  const getAllocationBadge = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'fully_allocated':
+        return 'bg-green-500 text-white';
+      case 'partially_allocated':
+        return 'bg-blue-500 text-white';
+      case 'unallocated':
+        return 'bg-yellow-500 text-white';
+      default:
+        return 'bg-gray-500 text-white';
+    }
+  };
+  
+  // Function to format allocation status
+  const formatAllocationStatus = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'fully_allocated':
+        return 'Fully Allocated';
+      case 'partially_allocated':
+        return 'Partially Allocated';
+      case 'unallocated':
+        return 'Unallocated';
+      default:
+        return status.charAt(0).toUpperCase() + status.slice(1);
+    }
+  };
 
   // Calculate the starting index for the current page
   const startIndex = (currentPage - 1) * (payments.length > 0 ? payments.length : 10);
@@ -89,6 +120,7 @@ export const PaymentHistoryTable: React.FC<PaymentHistoryTableProps> = ({
               <th className="py-3 px-4 border-b text-left">Phone</th>
               <th className="py-3 px-4 border-b text-left">Invoice</th>
               <th className="py-3 px-4 border-b text-left">Status</th>
+              <th className="py-3 px-4 border-b text-left">Allocation</th>
             </tr>
           </thead>
           <tbody>
@@ -106,16 +138,31 @@ export const PaymentHistoryTable: React.FC<PaymentHistoryTableProps> = ({
                 <td className="py-3 px-4 border-b">
                   {payment.invoiceId ? payment.invoiceId.invoiceNumber : '-'}
                 </td>
-                <td className="py-3 px-4 border-b">
+                <td className="py-3 px-4  border-b">
                   <span className={`px-2 py-1 text-xs rounded-full ${getStatusBadge(payment.status)}`}>
                     {payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}
                   </span>
+                </td>
+                <td className="py-3 px-1 border-b">
+                  
+                  {payment.allocationStatus ? (
+                    <span className={`px-2 py-1 text-xs rounded-full ${getAllocationBadge(payment.allocationStatus)}`}>
+                      {formatAllocationStatus(payment.allocationStatus)}
+                      {payment.allocatedAmount !== undefined && payment.amount !== undefined && (
+                        <span className=" w-[8rem] text-xs mt-1">
+                          {payment.allocatedAmount}/{payment.amount} 
+                        </span>
+                      )}
+                    </span>
+                  ) : (
+                    '-'
+                  )}
                 </td>
               </tr>
             ))}
             {payments.length === 0 && (
               <tr>
-                <td colSpan={9} className="py-4 text-center text-gray-500">No payments found</td>
+                <td colSpan={10} className="py-4 text-center text-gray-500">No payments found</td>
               </tr>
             )}
           </tbody>

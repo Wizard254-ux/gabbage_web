@@ -46,6 +46,38 @@ api.interceptors.response.use(
 );
 
 export const organizationService = {
+  // Pickup Management
+  getPickups: (params?: { 
+    page?: number; 
+    limit?: number; 
+    startDate?: string;
+    endDate?: string;
+    status?: string;
+    routeId?: string;
+    driverId?: string;
+  }) =>
+    api.get("/pickups", { params }),
+
+  createPickup: (pickupData: {
+    userId: string;
+    routeId: string;
+    scheduledDate: string;
+  }) =>
+    api.post("/pickups", pickupData),
+
+  updatePickupStatus: (id: string, updateData: {
+    status?: string;
+    driverId?: string;
+    notes?: string;
+  }) =>
+    api.put(`/pickups/${id}`, updateData),
+
+  getPickupRoutes: () =>
+    api.get("/pickups/routes"),
+
+  getPickupDrivers: () =>
+    api.get("/pickups/drivers"),
+
   // User Management
   listDrivers: () =>
     api.post("/auth/organization/users/manage", {

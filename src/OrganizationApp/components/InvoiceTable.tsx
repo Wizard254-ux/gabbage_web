@@ -16,6 +16,8 @@ interface Invoice {
   amountPaid: number;
   remainingBalance: number;
   status: string;
+  paymentStatus?: string;
+  dueStatus?: string;
   dueDate: string;
   issuedDate: string;
   billingPeriod: {
@@ -42,9 +44,75 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
     return format(new Date(dateString), 'dd/MM/yyyy');
   };
 
-  // Function to get status badge color
+  // Function to get payment status badge color
+  const getPaymentStatusBadge = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case 'fully_paid':
+      case 'paid':
+        return 'bg-green-500 text-white';
+      case 'partially_paid':
+      case 'partial':
+        return 'bg-blue-500 text-white';
+      case 'unpaid':
+      case 'pending':
+        return 'bg-yellow-500 text-white';
+      default:
+        return 'bg-gray-500 text-white';
+    }
+  };
+
+  // Function to get due status badge color
+  const getDueStatusBadge = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case 'due':
+        return 'bg-yellow-500 text-white';
+      case 'overdue':
+        return 'bg-red-500 text-white';
+      case 'paid':
+        return 'bg-green-500 text-white';
+      case 'upcoming':
+        return 'bg-blue-500 text-white';
+      default:
+        return 'bg-gray-500 text-white';
+    }
+  };
+  
+  // Function to format payment status text
+  const formatPaymentStatus = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case 'fully_paid':
+      case 'paid':
+        return 'Fully Paid';
+      case 'partially_paid':
+      case 'partial':
+        return 'Partially Paid';
+      case 'unpaid':
+      case 'pending':
+        return 'Unpaid';
+      default:
+        return status ? status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' ') : 'Unknown';
+    }
+  };
+  
+  // Function to format due status text
+  const formatDueStatus = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case 'due':
+        return 'Due (Grace Period)';
+      case 'overdue':
+        return 'Overdue';
+      case 'paid':
+        return 'Paid';
+      case 'upcoming':
+        return 'Upcoming';
+      default:
+        return status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Unknown';
+    }
+  };
+  
+  // For backward compatibility
   const getStatusBadge = (status: string) => {
-    switch (status.toLowerCase()) {
+    switch (status?.toLowerCase()) {
       case 'paid':
         return 'bg-green-500 text-white';
       case 'pending':
@@ -75,7 +143,8 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
               <th className="py-3 px-4 border-b text-left">Total Amount</th>
               <th className="py-3 px-4 border-b text-left">Amount Paid</th>
               <th className="py-3 px-4 border-b text-left">Balance</th>
-              <th className="py-3 px-4 border-b text-left">Status</th>
+              <th className="py-3 px-4 border-b text-left">Payment Status</th>
+              <th className="py-3 px-4 border-b text-left">Due Status</th>
             </tr>
           </thead>
           <tbody>
@@ -94,15 +163,20 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
                 <td className="py-3 px-4 border-b">KES {invoice.amountPaid.toLocaleString()}</td>
                 <td className="py-3 px-4 border-b">KES {invoice.remainingBalance.toLocaleString()}</td>
                 <td className="py-3 px-4 border-b">
-                  <span className={`px-2 py-1 text-xs rounded-full ${getStatusBadge(invoice.status)}`}>
-                    {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
+                  <span className={`px-2 py-1 text-xs rounded-full ${getPaymentStatusBadge(invoice.paymentStatus || invoice.status)}`}>
+                    {formatPaymentStatus(invoice.paymentStatus || invoice.status)}
+                  </span>
+                </td>
+                <td className="py-3 px-4 border-b">
+                  <span className={`px-2 py-1 text-xs rounded-full ${getDueStatusBadge(invoice.dueStatus || (invoice.status === 'overdue' ? 'overdue' : 'due'))}`}>
+                    {formatDueStatus(invoice.dueStatus || (invoice.status === 'overdue' ? 'overdue' : 'due'))}
                   </span>
                 </td>
               </tr>
             ))}
             {invoices.length === 0 && (
               <tr>
-                <td colSpan={11} className="py-4 text-center text-gray-500">No invoices found</td>
+                <td colSpan={12} className="py-4 text-center text-gray-500">No invoices found</td>
               </tr>
             )}
           </tbody>

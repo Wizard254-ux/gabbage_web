@@ -17,6 +17,8 @@ interface Invoice {
   amountPaid: number;
   remainingBalance: number;
   status: string;
+  paymentStatus?: string;
+  dueStatus?: string;
   dueDate: string;
   issuedDate: string;
   billingPeriod: {
@@ -112,16 +114,19 @@ export const Invoices: React.FC = () => {
           <form onSubmit={handleFilterSubmit}>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Payment Status</label>
                 <select 
                   value={status} 
                   onChange={(e) => setStatus(e.target.value)}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
                 >
                   <option value="">All Statuses</option>
-                  <option value="paid">Paid</option>
-                  <option value="partial">Partial</option>
+                  <option value="fully_paid">Fully Paid</option>
+                  <option value="partially_paid">Partially Paid</option>
+                  <option value="unpaid">Unpaid</option>
+                  <option value="due">Due (Grace Period)</option>
                   <option value="overdue">Overdue</option>
+                  <option value="upcoming">Upcoming</option>
                 </select>
               </div>
               <div>

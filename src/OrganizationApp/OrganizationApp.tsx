@@ -7,6 +7,7 @@ import { Clients } from './pages/Clients';
 import { Routes } from './pages/Routes';
 import { Payments } from './pages/Payments';
 import { Invoices } from './pages/Invoices';
+import { Pickups } from './pages/Pickups';
 
 interface OrganizationAppProps {
   onLogout: () => void;
@@ -29,6 +30,8 @@ export const OrganizationApp: React.FC<OrganizationAppProps> = ({ onLogout }) =>
         return <Payments />;
       case 'invoices':
         return <Invoices />;
+      case 'pickups':
+        return <Pickups />;
       default:
         return <Dashboard onNavigate={setActiveTab} />;
     }

@@ -14,14 +14,10 @@ interface Payment {
 }
 
 export const Payments: React.FC = () => {
-  const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showProcessModal, setShowProcessModal] = useState(false);
-  const [showStatsModal, setShowStatsModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [accountNumber, setAccountNumber] = useState('');
   const [paymentHistory, setPaymentHistory] = useState<Payment[]>([]);
-  const [paymentStats, setPaymentStats] = useState<any>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [pagination, setPagination] = useState({
@@ -31,51 +27,19 @@ export const Payments: React.FC = () => {
     hasNext: false,
     hasPrev: false
   });
-  const [activeView, setActiveView] = useState<'all' | 'search' | 'stats'>('all');
+  const [activeView, setActiveView] = useState<'all' | 'search'>('all');
   
   // Fetch all payments on component mount
   useEffect(() => {
     fetchAllPayments(1);
   }, []);
-  const [processFormData, setProcessFormData] = useState({
-    accountNumber: '',
-    amount: '',
-    paymentMethod: 'paybill',
-    mpesaReceiptNumber: '',
-    phoneNumber: '',
-    transactionId: '',
-  });
+
   const [exportFormData, setExportFormData] = useState({
     format: 'csv' as 'csv' | 'excel' | 'pdf',
     startDate: '',
     endDate: '',
     accountNumber: '',
   });
-
-  const handleProcessPayment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await organizationService.processPayment({
-        ...processFormData,
-        amount: parseFloat(processFormData.amount),
-      });
-      setShowProcessModal(false);
-      setProcessFormData({
-        accountNumber: '',
-        amount: '',
-        paymentMethod: 'paybill',
-        mpesaReceiptNumber: '',
-        phoneNumber: '',
-        transactionId: '',
-      });
-      // Refresh payment history if account number is set
-      if (accountNumber) {
-        fetchPaymentHistory();
-      }
-    } catch (error) {
-      console.error('Failed to process payment:', error);
-    }
-  };
 
   const fetchPaymentHistory = async (page = 1) => {
     if (!accountNumber) return;
@@ -87,7 +51,6 @@ export const Payments: React.FC = () => {
         limit: itemsPerPage
       });
       setPaymentHistory(response.data.payments || []);
-      setTotalPages(Math.ceil((response.data.total || 0) / itemsPerPage));
       setCurrentPage(page);
     } catch (error) {
       console.error('Failed to fetch payment history:', error);
@@ -102,16 +65,6 @@ export const Payments: React.FC = () => {
       setActiveView('search');
       setCurrentPage(1);
       fetchPaymentHistory(1);
-    }
-  };
-
-  const handleGenerateInvoices = async () => {
-    try {
-      await organizationService.generateMonthlyInvoices();
-      alert('Monthly invoices generated successfully!');
-    } catch (error) {
-      console.error('Failed to generate invoices:', error);
-      alert('Failed to generate invoices');
     }
   };
 
@@ -137,16 +90,6 @@ export const Payments: React.FC = () => {
     }
   };
 
-  const fetchPaymentStats = async () => {
-    try {
-      const response = await organizationService.getPaymentStats();
-      setPaymentStats(response.data);
-      setShowStatsModal(true);
-    } catch (error) {
-      console.error('Failed to fetch payment stats:', error);
-    }
-  };
-
   const handleExportPayments = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -166,21 +109,6 @@ export const Payments: React.FC = () => {
     }
   };
 
-  const handleReconcilePayments = async () => {
-    const startDate = prompt('Enter start date (YYYY-MM-DD):');
-    const endDate = prompt('Enter end date (YYYY-MM-DD):');
-    
-    if (!startDate || !endDate) return;
-    
-    try {
-      await organizationService.reconcilePayments({ startDate, endDate });
-      alert('Payment reconciliation completed successfully!');
-    } catch (error) {
-      console.error('Failed to reconcile payments:', error);
-      alert('Failed to reconcile payments');
-    }
-  };
-
   return (
     <div className="p-8">
       {/* Header */}
@@ -191,15 +119,6 @@ export const Payments: React.FC = () => {
         </div>
         <div className="flex flex-wrap gap-2">
           <button
-            onClick={handleGenerateInvoices}
-            className="bg-white border border-green-600 text-green-600 hover:bg-green-50 px-4 py-2 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg flex items-center space-x-2"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            <span>Generate Invoices</span>
-          </button>
-          <button
             onClick={() => setShowExportModal(true)}
             className="bg-white border border-green-600 text-green-600 hover:bg-green-50 px-4 py-2 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg flex items-center space-x-2"
           >
@@ -207,33 +126,6 @@ export const Payments: React.FC = () => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
             <span>Export</span>
-          </button>
-          <button
-            onClick={fetchPaymentStats}
-            className="bg-white border border-green-600 text-green-600 hover:bg-green-50 px-4 py-2 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg flex items-center space-x-2"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-            </svg>
-            <span>Stats</span>
-          </button>
-          <button
-            onClick={handleReconcilePayments}
-            className="bg-white border border-green-600 text-green-600 hover:bg-green-50 px-4 py-2 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg flex items-center space-x-2"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span>Reconcile</span>
-          </button>
-          <button
-            onClick={() => setShowProcessModal(true)}
-            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg flex items-center space-x-2"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-            <span>Process Payment</span>
           </button>
         </div>
       </div>
@@ -320,108 +212,6 @@ export const Payments: React.FC = () => {
         </div>
       )}
 
-      {/* Process Payment Modal */}
-      {showProcessModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl max-w-md w-full p-8 max-h-[90vh] overflow-y-auto shadow-2xl">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-2xl font-bold text-gray-900">Process Payment</h3>
-              <button
-                onClick={() => setShowProcessModal(false)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <form onSubmit={handleProcessPayment} className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Account Number</label>
-                <input
-                  type="text"
-                  value={processFormData.accountNumber}
-                  onChange={(e) => setProcessFormData({ ...processFormData, accountNumber: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors"
-                  placeholder="e.g., RES123456"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Amount (KSH)</label>
-                <input
-                  type="number"
-                  value={processFormData.amount}
-                  onChange={(e) => setProcessFormData({ ...processFormData, amount: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors"
-                  placeholder="Enter amount"
-                  required
-                  min="1"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Payment Method</label>
-                <select
-                  value={processFormData.paymentMethod}
-                  onChange={(e) => setProcessFormData({ ...processFormData, paymentMethod: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors"
-                >
-                  <option value="paybill">Paybill</option>
-                  <option value="mpesa">M-Pesa</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">M-Pesa Receipt Number</label>
-                <input
-                  type="text"
-                  value={processFormData.mpesaReceiptNumber}
-                  onChange={(e) => setProcessFormData({ ...processFormData, mpesaReceiptNumber: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors"
-                  placeholder="Optional"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
-                <input
-                  type="tel"
-                  value={processFormData.phoneNumber}
-                  onChange={(e) => setProcessFormData({ ...processFormData, phoneNumber: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors"
-                  placeholder="e.g., +254712345678"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Transaction ID</label>
-                <input
-                  type="text"
-                  value={processFormData.transactionId}
-                  onChange={(e) => setProcessFormData({ ...processFormData, transactionId: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors"
-                  placeholder="Enter transaction ID"
-                  required
-                />
-              </div>
-              <div className="flex gap-3 pt-4">
-                <button 
-                  type="submit" 
-                  className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg"
-                >
-                  Process Payment
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowProcessModal(false)}
-                  className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-3 rounded-lg font-medium transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
       {/* Export Modal */}
       {showExportModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
@@ -494,43 +284,6 @@ export const Payments: React.FC = () => {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* Stats Modal */}
-      {showStatsModal && paymentStats && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl max-w-lg w-full p-8 shadow-2xl">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-gray-900">Payment Statistics</h3>
-              <button
-                onClick={() => setShowStatsModal(false)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-green-50 p-4 rounded-lg">
-                <h4 className="text-sm font-medium text-green-800 mb-1">Total Payments</h4>
-                <p className="text-2xl font-bold text-green-600">{paymentStats.totalPayments || 0}</p>
-              </div>
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <h4 className="text-sm font-medium text-blue-800 mb-1">Total Amount</h4>
-                <p className="text-2xl font-bold text-blue-600">KSH {(paymentStats.totalAmount || 0).toLocaleString()}</p>
-              </div>
-              <div className="bg-yellow-50 p-4 rounded-lg">
-                <h4 className="text-sm font-medium text-yellow-800 mb-1">Pending</h4>
-                <p className="text-2xl font-bold text-yellow-600">{paymentStats.pendingPayments || 0}</p>
-              </div>
-              <div className="bg-red-50 p-4 rounded-lg">
-                <h4 className="text-sm font-medium text-red-800 mb-1">Failed</h4>
-                <p className="text-2xl font-bold text-red-600">{paymentStats.failedPayments || 0}</p>
-              </div>
-            </div>
           </div>
         </div>
       )}
