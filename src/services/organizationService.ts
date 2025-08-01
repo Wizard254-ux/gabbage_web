@@ -2,7 +2,7 @@ import axios from "axios";
 
 const api = axios.create({
   // baseURL: "https://garbagesystem.onrender.com/api",
-  baseURL: "https://garbage.lomtechnology.com/api",
+  baseURL: "https://garbagesystem.onrender.com/api",
   timeout: 10000,
   withCredentials: true,
   headers: {
