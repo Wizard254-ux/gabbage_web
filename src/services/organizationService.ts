@@ -91,7 +91,13 @@ export const organizationService = {
       userType: "client"
     }),
 
-  createDriver: (userData: any) =>
+  createDriver: (userData: {
+    name: string;
+    email: string;
+    phone: string;
+    address?: string;
+    licenseNumber?: string;
+  }) =>
     api.post("/auth/organization/users/manage", {
       action: "create",
       userType: "driver",
@@ -105,7 +111,13 @@ export const organizationService = {
       },
     }),
 
-  createClient: (userData: any) =>
+  createClient: (userData: {
+    name: string;
+    email: string;
+    phone: string;
+    address?: string;
+    accountNumber?: string;
+  }) =>
     api.post("/auth/organization/users/manage", {
       action: "create",
       userType: "client",
@@ -119,7 +131,14 @@ export const organizationService = {
       },
     }),
 
-  editDriver: (userId: string, updateData: any) =>
+  editDriver: (userId: string, updateData: {
+    name?: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+    licenseNumber?: string;
+    status?: string;
+  }) =>
     api.post("/auth/organization/users/manage", {
       action: "edit",
       userType: "driver",
@@ -139,7 +158,14 @@ export const organizationService = {
       data: { documentPath }
     }),
 
-  editClient: (userId: string, updateData: any) =>
+  editClient: (userId: string, updateData: {
+    name?: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+    accountNumber?: string;
+    status?: string;
+  }) =>
     api.post("/auth/organization/users/manage", {
       action: "edit",
       userType: "client",
@@ -191,7 +217,13 @@ export const organizationService = {
     api.get(`/invoices/client/${clientId}`, { params }),
 
   // Route Management
-  createRoute: (routeData: any) =>
+  createRoute: (routeData: {
+    name: string;
+    description?: string;
+    startLocation?: string;
+    endLocation?: string;
+    waypoints?: string[];
+  }) =>
     api.post("/routes", {
       action: "create",
       ...routeData
@@ -208,7 +240,13 @@ export const organizationService = {
       id
     }),
 
-  updateRoute: (id: string, routeData: any) =>
+  updateRoute: (id: string, routeData: {
+    name?: string;
+    description?: string;
+    startLocation?: string;
+    endLocation?: string;
+    waypoints?: string[];
+  }) =>
     api.post("/routes", {
       action: "update",
       id,
@@ -299,14 +337,6 @@ export const organizationService = {
     groupBy?: 'day' | 'week' | 'month' 
   }) =>
     api.get("/payments/stats", { params }),
-
-  exportPayments: (params: {
-    format: 'csv' | 'excel' | 'pdf';
-    startDate?: string;
-    endDate?: string;
-    accountNumber?: string;
-  }) =>
-    api.get("/payments/export", { params, responseType: 'blob' }),
 
   reconcilePayments: (params: { 
     startDate: string; 

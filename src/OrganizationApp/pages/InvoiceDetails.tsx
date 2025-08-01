@@ -13,7 +13,7 @@ interface Payment {
   allocatedAmount?: number;
   paidAt?: string;
   createdAt: string;
-  invoiceAllocations?: any[];
+  invoiceAllocations?: unknown[];
   invoiceIds?: number[];
 }
 
@@ -41,7 +41,7 @@ interface InvoiceDetails {
 
 interface InvoiceDetailsProps {
   invoiceId: string | null;
-  onNavigate?: (tab: string, params?: any) => void;
+  onNavigate?: (tab: string, params?: {invoiceId?: string}) => void;
 }
 
 export const InvoiceDetails: React.FC<InvoiceDetailsProps> = ({ invoiceId, onNavigate }) => {
@@ -67,8 +67,8 @@ export const InvoiceDetails: React.FC<InvoiceDetailsProps> = ({ invoiceId, onNav
       } else {
         setError('Failed to fetch invoice details');
       }
-    } catch (err: any) {
-      setError(err.message || 'An error occurred while fetching invoice details');
+    } catch (err: unknown) {
+      setError(err + 'An error occurred while fetching invoice details');
     } finally {
       setLoading(false);
     }

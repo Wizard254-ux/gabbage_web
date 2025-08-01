@@ -5,6 +5,7 @@ import { AgingSummaryTable } from '../components/AgingSummaryTable';
 
 interface Invoice {
   _id: string;
+  id: string;
   invoiceNumber: string;
   userId: {
     _id: string;
@@ -12,6 +13,9 @@ interface Invoice {
     email: string;
     phone: string;
     address: string;
+  };
+  user: {
+    name: string;
   };
   accountNumber: string;
   totalAmount: number;
@@ -22,10 +26,8 @@ interface Invoice {
   dueStatus?: string;
   dueDate: string;
   issuedDate: string;
-  billingPeriod: {
-    start: string;
-    end: string;
-  };
+  billingPeriodStart: string;
+  billingPeriodEnd: string;
 }
 
 interface PaginationData {
@@ -56,13 +58,12 @@ interface AgingSummary {
 }
 
 interface InvoicesProps {
-  onNavigate?: (tab: string, params?: any) => void;
+  onNavigate?: (tab: string, params?: { invoiceId?: string }) => void;
 }
 
 export const Invoices: React.FC<InvoicesProps> = ({ onNavigate }) => {
   const [activeTab, setActiveTab] = useState<'all' | 'aging'>('all');
   const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [agingInvoices, setAgingInvoices] = useState<Invoice[]>([]);
   const [agingSummary, setAgingSummary] = useState<AgingSummary | null>(null);
   const [pagination, setPagination] = useState<PaginationData>({
     currentPage: 1,
@@ -71,18 +72,11 @@ export const Invoices: React.FC<InvoicesProps> = ({ onNavigate }) => {
     hasNext: false,
     hasPrev: false
   });
-  const [agingPagination, setAgingPagination] = useState<PaginationData>({
-    currentPage: 1,
-    totalPages: 1,
-    totalInvoices: 0,
-    hasNext: false,
-    hasPrev: false
-  });
+
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [exportingInvoices, setExportingInvoices] = useState<boolean>(false);
   const [exportingAging, setExportingAging] = useState<boolean>(false);
-  const [exportFormat, setExportFormat] = useState<'csv' | 'pdf'>('csv');
   const [showExportDropdown, setShowExportDropdown] = useState<boolean>(false);
   
   // Filter states for all invoices
@@ -96,7 +90,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ onNavigate }) => {
     setError(null);
     
     try {
-      const params: any = { page, limit: 10 };
+      const params: Record<string, string | number> = { page, limit: 10 };
       
       // Add filters if they exist
       if (status) params.status = status;
@@ -113,8 +107,9 @@ export const Invoices: React.FC<InvoicesProps> = ({ onNavigate }) => {
       } else {
         setError('Failed to fetch invoices');
       }
-    } catch (err: any) {
-      setError(err.message || 'An error occurred while fetching invoices');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred while fetching invoices';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -132,8 +127,9 @@ export const Invoices: React.FC<InvoicesProps> = ({ onNavigate }) => {
       } else {
         setError('Failed to fetch aging summary');
       }
-    } catch (err: any) {
-      setError(err.message || 'An error occurred while fetching aging summary');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred while fetching aging summary';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -166,7 +162,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ onNavigate }) => {
     if (activeTab === 'all') {
       fetchInvoices(page);
     } else {
-      fetchAgingSummary(page);
+      fetchAgingSummary();
     }
   };
 
@@ -175,7 +171,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ onNavigate }) => {
     if (activeTab === 'all') {
       fetchInvoices(1);
     } else {
-      fetchAgingSummary(1);
+      fetchAgingSummary();
     }
   };
 
@@ -190,7 +186,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ onNavigate }) => {
   const handleExportInvoices = async () => {
     setExportingInvoices(true);
     try {
-      const params: any = {};
+      const params: Record<string, string> = {};
       
       // Add filters if they exist
       if (status) params.status = status;
@@ -221,7 +217,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ onNavigate }) => {
   const handleExportAgingSummary = async (format: 'csv' | 'pdf') => {
     setExportingAging(true);
     try {
-      const params: any = { format };
+      const params: Record<string, string> = { format };
       
       let response;
       let blob;

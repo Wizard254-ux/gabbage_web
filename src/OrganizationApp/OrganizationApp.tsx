@@ -19,7 +19,7 @@ export const OrganizationApp: React.FC<OrganizationAppProps> = ({ onLogout }) =>
   const [activeTab, setActiveTab] = useState('dashboard');
   const [invoiceId, setInvoiceId] = useState<string | null>(null);
 
-  const handleNavigation = (tab: string, params?: any) => {
+  const handleNavigation = (tab: string, params?: {invoiceId?: string}) => {
     if (tab === 'invoice-details' && params?.invoiceId) {
       setInvoiceId(params.invoiceId);
       setActiveTab('invoice-details');
