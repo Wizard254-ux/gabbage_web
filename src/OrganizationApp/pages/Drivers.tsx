@@ -24,7 +24,6 @@ import {
   DialogContent,
   DialogActions,
   CircularProgress,
-  Grid,
 
   Alert,
   Snackbar,
@@ -33,7 +32,6 @@ import {
   ListItem,
   ListItemText,
   ListItemIcon,
-  ListItemSecondaryAction,
   Switch,
   FormControlLabel,
   Tabs,
@@ -59,11 +57,10 @@ import {
   Email as EmailIcon,
   Phone as PhoneIcon,
   CalendarToday as CalendarIcon,
-  CheckCircle as CheckCircleIcon,
   Cancel as CancelIcon
 } from '@mui/icons-material';
 import { organizationService } from '../../services/organizationService';
-
+import { GridLegacy as Grid } from "@mui/material";
 interface Driver {
   _id: string;
   name: string;
@@ -99,7 +96,7 @@ function TabPanel(props: TabPanelProps) {
 
 export const Drivers: React.FC = () => {
   const [drivers, setDrivers] = useState<Driver[]>([]);
-  const [routes, setRoutes] = useState<any[]>([]);
+  const [routes, setRoutes] = useState<unknown[]>([]);
   const [loading, setLoading] = useState(true);
   const [addingDriver, setAddingDriver] = useState(false);
   const [sendingCredentials, setSendingCredentials] = useState(false);
@@ -109,7 +106,7 @@ export const Drivers: React.FC = () => {
   const [loadingDriverDetails, setLoadingDriverDetails] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [showSuccessSnackbar, setShowSuccessSnackbar] = useState(false);
-  const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
+  const [selectedDriver, setSelectedDriver] = useState<Driver >("");
   const [searchTerm, setSearchTerm] = useState('');
   const [isDocumentEditMode, setIsDocumentEditMode] = useState(false);
   const [editFormData, setEditFormData] = useState({
@@ -461,7 +458,9 @@ export const Drivers: React.FC = () => {
       {/* Header */}
       <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 2 }}>
         <Box>
-
+          <Typography variant="h4" component="h1" fontWeight="bold" gutterBottom>
+            Drivers Management
+          </Typography>
           <Typography variant="body1" color="text.secondary">
             Manage your delivery team efficiently
           </Typography>
@@ -795,7 +794,9 @@ export const Drivers: React.FC = () => {
                   }
                   label="Active Status"
                 />
-                  {selectedDriver?.documents && selectedDriver.documents.length > 0 && (
+              </Grid>
+              
+              {selectedDriver?.documents && selectedDriver.documents.length > 0 && (
                 <Grid item xs={12}>
                   <Typography variant="h6" gutterBottom>
                     Current Documents ({selectedDriver.documents.length})
@@ -809,9 +810,8 @@ export const Drivers: React.FC = () => {
       return (
         <ListItem
           key={`edit-doc-${index}`}
-          className={"bg-red-25"}
           sx={{
-            border: 1!,
+            border: 1,
             borderColor: isMarkedForDeletion ? 'error.main' : 'divider',
             borderRadius: 1,
             mb: 1,
@@ -873,17 +873,14 @@ export const Drivers: React.FC = () => {
       );
     })}
   </List>
-</Box>                  {documentsToDelete.length > 0 && (
+                </Box>
+                  {documentsToDelete.length > 0 && (
                     <Alert severity="warning" sx={{ mt: 2 }}>
                       {documentsToDelete.length} document(s) will be permanently deleted when you update the driver.
                     </Alert>
                   )}
                 </Grid>
               )}
-              </Grid>
-
-              {/* Current Documents */}
-
 
               {/* Add New Documents */}
               <Grid item xs={12}>
@@ -913,6 +910,8 @@ export const Drivers: React.FC = () => {
                 )}
               </Grid>
             </Grid>
+
+
           </DialogContent>
           <DialogActions sx={{ p: 3 }}>
             <Button onClick={() => setShowEditModal(false)} disabled={updatingDriver}>

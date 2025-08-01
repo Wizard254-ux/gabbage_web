@@ -6,7 +6,9 @@ interface Payment {
   userId: string;
   accountNumber: string;
   amount: number;
-  invoice:any,
+  invoice:{
+    invoiceNumber:string
+  },
   currency: string;
   paymentMethod: string;
   transactionId: string;
@@ -87,19 +89,19 @@ export const PaymentHistoryTable: React.FC<PaymentHistoryTableProps> = ({
   };
   
   // Function to get allocation status badge color
-  const getAllocationBadge = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'fully_allocated':
-        return 'bg-green-500 text-white';
-      case 'partially_allocated':
-        return 'bg-blue-500 text-white';
-      case 'unallocated':
-        return 'bg-yellow-500 text-white';
-      default:
-        return 'bg-gray-500 text-white';
-    }
-  };
-  
+  // const getAllocationBadge = (status: string) => {
+  //   switch (status.toLowerCase()) {
+  //     case 'fully_allocated':
+  //       return 'bg-green-500 text-white';
+  //     case 'partially_allocated':
+  //       return 'bg-blue-500 text-white';
+  //     case 'unallocated':
+  //       return 'bg-yellow-500 text-white';
+  //     default:
+  //       return 'bg-gray-500 text-white';
+  //   }
+  // };
+  //
   // Function to format allocation status
   const formatAllocationStatus = (status: string) => {
     switch (status.toLowerCase()) {
@@ -174,7 +176,7 @@ export const PaymentHistoryTable: React.FC<PaymentHistoryTableProps> = ({
                     {payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}
                   </span>
                 </td>
-                <td className="`">
+                <td className="py-3 px-4 border-b">
                   {payment.allocationStatus ? (
                     <span className={`font-medium text-blue-600 `}>
                       {formatAllocationStatus(payment.allocationStatus)}

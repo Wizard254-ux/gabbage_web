@@ -6,7 +6,6 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Paper,
   Typography,
   Box,
   TextField,
@@ -15,14 +14,12 @@ import {
   CardContent,
   Button,
   CircularProgress,
-  Grid,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
+
   Chip,
   Avatar
 } from '@mui/material';
+import Grid from '@mui/material/Grid';
+
 import {
   Search as SearchIcon,
   Download as DownloadIcon,
@@ -72,7 +69,7 @@ const Bags: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [bags, setBags] = useState<BagDistribution[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
-  const [pagination, setPagination] = useState<any>(null);
+  const [pagination, setPagination] = useState<unknown>(null);
   const [page, setPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -152,7 +149,9 @@ const Bags: React.FC = () => {
       {/* Header */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Box>
-
+          <Typography variant="h4" component="h1" fontWeight="bold" gutterBottom>
+            Bag Distribution Management
+          </Typography>
           <Typography variant="subtitle1" color="text.secondary">
             Track and manage garbage bag distributions to clients
           </Typography>
@@ -228,7 +227,7 @@ const Bags: React.FC = () => {
             Filters
           </Typography>
           <Grid container spacing={2}>
-            <Grid item xs={12} md={2.5}>
+            <Grid item xs={12} md={3}>
               <TextField
                 fullWidth
                 label="Search"
@@ -276,7 +275,7 @@ const Bags: React.FC = () => {
                 </select>
               </Box>
             </Grid>
-            <Grid item xs={12} md={1.5}>
+            <Grid item xs={12} md={2}>
               <Box>
                 <Typography variant="body2" sx={{ mb: 0.5, color: 'text.secondary', fontSize: '0.75rem' }}>
                   Status

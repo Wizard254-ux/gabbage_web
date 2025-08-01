@@ -9,7 +9,7 @@ import { Payments } from './pages/Payments';
 import { Invoices } from './pages/Invoices';
 import { InvoiceDetails } from './pages/InvoiceDetails';
 import { Pickups } from './pages/Pickups';
-import Bags from './pages/Bags';
+import Bags from './pages/Bags.tsx';
 
 interface OrganizationAppProps {
   onLogout: () => void;

@@ -24,26 +24,22 @@ import {
   DialogContent,
   DialogActions,
   CircularProgress,
-  Grid,
   FormControl,
   InputLabel,
   Select,
   Alert,
   Snackbar,
-  Divider,
   List,
   ListItem,
   ListItemText,
   ListItemIcon,
-  ListItemSecondaryAction,
   Switch,
   FormControlLabel,
   Tabs,
   Tab,
-  ImageList,
-  ImageListItem,
-  ImageListItemBar
+
 } from '@mui/material';
+import { GridLegacy as Grid } from "@mui/material";
 import {
   MoreVert as MoreVertIcon,
   Search as SearchIcon,
@@ -118,7 +114,6 @@ export const Clients: React.FC = () => {
   const [clients, setClients] = useState<Client[]>([]);
   const [routes, setRoutes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
@@ -168,7 +163,7 @@ export const Clients: React.FC = () => {
       setLoadingPayments(false);
     }
   };
-  
+
   const fetchClientInvoices = async () => {
     if (!selectedClient) return;
     setLoadingInvoices(true);
@@ -194,7 +189,7 @@ export const Clients: React.FC = () => {
       const params: any = {};
       if (bagStartDate) params.startDate = bagStartDate;
       if (bagEndDate) params.endDate = bagEndDate;
-      
+
       const response = await organizationService.getClientBagHistory(
         selectedClient.id,
         params
@@ -364,7 +359,7 @@ export const Clients: React.FC = () => {
     setIsDocumentEditMode(false);
     setSelectedClient(client);
     setDetailsTabValue(0);
-    
+
     // Reset payment and invoice data
     setClientPayments([]);
     setClientInvoices([]);
@@ -420,7 +415,7 @@ export const Clients: React.FC = () => {
 
       // Use client edit endpoint that supports documents
       await organizationService.editClient(selectedClient.id || selectedClient.id || '', editFormData);
-      
+
       setShowEditModal(false);
       setSelectedClient(null);
       setDocumentsToDelete([]);
@@ -479,7 +474,7 @@ export const Clients: React.FC = () => {
 
   const handleDeleteDocumentInEditMode = async (documentPath: string) => {
     if (!selectedClient) return;
-    
+
     if (window.confirm('Are you sure you want to delete this document permanently?')) {
       setDeletingDocument(true);
       try {
@@ -491,7 +486,7 @@ export const Clients: React.FC = () => {
           documents: selectedClient.documents.filter(doc => doc !== documentPath)
         };
         setSelectedClient(updatedClient);
-        
+
         setSuccessMessage('Document deleted successfully!');
         setShowSuccessSnackbar(true);
       } catch (error) {
@@ -859,8 +854,8 @@ export const Clients: React.FC = () => {
           }
         }}
       >
-        <DialogTitle 
-          sx={{ 
+        <DialogTitle
+          sx={{
             background: 'linear-gradient(45deg, #4CAF50 30%, #45A049 90%)',
             color: 'white',
             display: 'flex',
@@ -875,20 +870,20 @@ export const Clients: React.FC = () => {
               Add New Client
             </Typography>
           </Box>
-          <IconButton 
+          <IconButton
             onClick={() => setShowAddModal(false)}
             sx={{ color: 'white' }}
           >
             <CloseIcon />
           </IconButton>
         </DialogTitle>
-        
+
         <form onSubmit={handleAdd}>
           <DialogContent sx={{ p: 4, bgcolor: 'grey.50', maxHeight: '70vh', overflowY: 'auto' }}>
             <Typography variant="h6" sx={{ mb: 3, color: 'text.primary', fontWeight: 600 }}>
               Client Information
             </Typography>
-            
+
             {/* Personal Information Section */}
             <Card sx={{ mb: 3, boxShadow: 2 }}>
               <CardContent sx={{ p: 3 }}>
@@ -898,7 +893,7 @@ export const Clients: React.FC = () => {
                     Personal Details
                   </Typography>
                 </Box>
-                
+
                 <Grid container spacing={3}>
                   <Grid item xs={12} md={6}>
                     <TextField
@@ -1003,7 +998,7 @@ export const Clients: React.FC = () => {
                     Service Configuration
                   </Typography>
                 </Box>
-                
+
                 <Grid container spacing={3}>
                   <Grid item xs={12} md={6}>
                     <FormControl fullWidth required variant="outlined">
@@ -1062,7 +1057,7 @@ export const Clients: React.FC = () => {
                       </Select>
                     </FormControl>
                   </Grid>
-                  
+
                   {addFormData.clientType === 'commercial' && (
                     <Grid item xs={12} md={6}>
                       <TextField
@@ -1078,7 +1073,7 @@ export const Clients: React.FC = () => {
                       />
                     </Grid>
                   )}
-                  
+
                   <Grid item xs={12} md={addFormData.clientType === 'commercial' ? 6 : 6}>
                     <TextField
                       fullWidth
@@ -1096,13 +1091,13 @@ export const Clients: React.FC = () => {
                           </InputAdornment>
                         ),
                       }}
-                      helperText={addFormData.clientType === 'commercial' ? 
-                        `Total: KSH ${(addFormData.monthlyRate * addFormData.numberOfUnits).toLocaleString()}` : 
+                      helperText={addFormData.clientType === 'commercial' ?
+                        `Total: KSH ${(addFormData.monthlyRate * addFormData.numberOfUnits).toLocaleString()}` :
                         'Monthly service fee'
                       }
                     />
                   </Grid>
-                  
+
                   <Grid item xs={12} md={6}>
                     <TextField
                       fullWidth
@@ -1129,11 +1124,11 @@ export const Clients: React.FC = () => {
                     Documents (Optional)
                   </Typography>
                 </Box>
-                
-                <Box sx={{ 
-                  border: '2px dashed #ddd', 
-                  borderRadius: 2, 
-                  p: 4, 
+
+                <Box sx={{
+                  border: '2px dashed #ddd',
+                  borderRadius: 2,
+                  p: 4,
                   textAlign: 'center',
                   bgcolor: 'grey.50',
                   '&:hover': {
@@ -1146,8 +1141,8 @@ export const Clients: React.FC = () => {
                     component="label"
                     size="large"
                     startIcon={<UploadIcon />}
-                    sx={{ 
-                      py: 2, 
+                    sx={{
+                      py: 2,
                       px: 4,
                       borderRadius: 2,
                       textTransform: 'none',
@@ -1168,7 +1163,7 @@ export const Clients: React.FC = () => {
                   </Typography>
                   {documentsFiles && documentsFiles.length > 0 && (
                     <Box sx={{ mt: 2 }}>
-                      <Chip 
+                      <Chip
                         label={`${documentsFiles.length} file(s) selected`}
                         color="success"
                         variant="outlined"
@@ -1180,9 +1175,9 @@ export const Clients: React.FC = () => {
               </CardContent>
             </Card>
           </DialogContent>
-          
+
           <DialogActions sx={{ p: 4, bgcolor: 'white', borderTop: '1px solid #e0e0e0' }}>
-            <Button 
+            <Button
               onClick={() => setShowAddModal(false)}
               variant="outlined"
               size="large"
@@ -1196,7 +1191,7 @@ export const Clients: React.FC = () => {
               disabled={addingClient}
               startIcon={addingClient ? <CircularProgress size={20} /> : <AddIcon />}
               size="large"
-              sx={{ 
+              sx={{
                 px: 4,
                 background: 'linear-gradient(45deg, #4CAF50 30%, #45A049 90%)',
                 boxShadow: '0 3px 5px 2px rgba(76, 175, 80, .3)',
@@ -1222,18 +1217,18 @@ export const Clients: React.FC = () => {
           </IconButton>
         </DialogTitle>
         <form onSubmit={handleUpdate}>
-           <Grid item xs={12} md={6} ml={3}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={editFormData.isActive}
-                      onChange={(e) => setEditFormData({ ...editFormData, isActive: e.target.checked })}
-                    />
-                  }
-                  label="Active Status"
-                />
-              </Grid>
           <DialogContent>
+            <Box sx={{ ml: 3, mb: 2 }}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={editFormData.isActive}
+                    onChange={(e) => setEditFormData({ ...editFormData, isActive: e.target.checked })}
+                  />
+                }
+                label="Active Status"
+              />
+            </Box>
             <Grid container spacing={3}>
               <Grid item xs={12} md={6}>
                 <TextField
@@ -1520,7 +1515,7 @@ export const Clients: React.FC = () => {
                       </CardContent>
                     </Card>
                   </Grid>
-                  <Grid item xs={12} md={6}>
+                  <Grid container xs={12} md={6}>
                     <Card variant="outlined">
                       <CardContent>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
@@ -1562,8 +1557,9 @@ export const Clients: React.FC = () => {
                       const isImage = isImageFile(fileName);
 
                       return (
-                        <Grid item xs={12} sm={6} md={4} key={`doc-detail-${index}`}>
+                        <Grid item xs={12} sm={6} md={4}>
                           <Card
+                            key={`doc-detail-${index}`}
                             variant="outlined"
                             sx={{
                               height: '100%',
