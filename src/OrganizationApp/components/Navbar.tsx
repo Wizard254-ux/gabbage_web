@@ -18,20 +18,20 @@ export const Navbar: React.FC<NavbarProps> = ({ onLogout }) => {
         
         <div className="flex items-center space-x-6">
           {/* Notifications */}
-          <button className="relative p-2 text-gray-400 hover:text-gray-600 transition-colors">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-3.5-3.5M9 17H4l3.5-3.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></div>
-          </button>
+          {/*<button className="relative p-2 text-gray-400 hover:text-gray-600 transition-colors">*/}
+          {/*  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">*/}
+          {/*    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-3.5-3.5M9 17H4l3.5-3.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />*/}
+          {/*  </svg>*/}
+          {/*  <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></div>*/}
+          {/*</button>*/}
           
           {/* User Profile */}
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center shadow-md">
-              <span className="text-white font-semibold text-sm">
-                {admin?.user.name.charAt(0).toUpperCase()}
-              </span>
-            </div>
+            {/*<div className="w-10 h-10 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center shadow-md">*/}
+            {/*  <span className="text-white font-semibold text-sm">*/}
+            {/*    {admin?.user.name.charAt(0).toUpperCase()}*/}
+            {/*  </span>*/}
+            {/*</div>*/}
             <div className="hidden md:block">
               <p className="text-sm font-medium text-gray-900">{admin?.user.name}</p>
               <p className="text-xs text-gray-500 truncate max-w-[150px]">{admin?.user.email}</p>

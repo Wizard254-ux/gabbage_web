@@ -20,10 +20,11 @@ interface Invoice {
   dueStatus?: string;
   dueDate: string;
   issuedDate: string;
-  billingPeriod: {
-    start: string;
-    end: string;
-  };
+  billingPeriodEnd:string,
+  billingPeriodStart:string,
+  id:string,
+  user:any,
+
 }
 
 interface InvoiceTableProps {
@@ -32,6 +33,7 @@ interface InvoiceTableProps {
   totalPages: number;
   onPageChange: (page: number) => void;
   showAgingInfo?: boolean;
+  onViewInvoice?: (invoiceId: string) => void;
 }
 
 export const InvoiceTable: React.FC<InvoiceTableProps> = ({ 
@@ -39,7 +41,8 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
   currentPage, 
   totalPages, 
   onPageChange,
-  showAgingInfo = false
+  showAgingInfo = false,
+  onViewInvoice
 }) => {
   // Function to format date
   const formatDate = (dateString: string) => {
@@ -147,10 +150,12 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
               <th className="py-3 px-4 border-b text-left">Balance</th>
               <th className="py-3 px-4 border-b text-left">Payment Status</th>
               <th className="py-3 px-4 border-b text-left">Due Status</th>
+              {onViewInvoice && <th className="py-3 px-4 border-b text-center">Actions</th>}
             </tr>
           </thead>
           <tbody>
             {invoices.map((invoice, index) => {
+              console.log(invoice)
               const isOverdue = (invoice.dueStatus || invoice.status) === 'overdue';
               const isDue = (invoice.dueStatus || invoice.status) === 'due';
               const rowClass = showAgingInfo 
@@ -162,7 +167,7 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
                 : 'hover:bg-gray-50';
               
               return (
-                <tr key={invoice._id} className={rowClass}>
+                <tr key={invoice.id} className={rowClass}>
                   <td className="py-3 px-4 border-b">{startIndex + index + 1}</td>
                   <td className="py-3 px-4 border-b font-medium">
                     {invoice.invoiceNumber}
@@ -170,10 +175,11 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
                       <span className="ml-2 text-red-500 text-xs">⚠️</span>
                     )}
                   </td>
-                  <td className="py-3 px-4 border-b">{invoice.userId.name}</td>
+                  <td className="py-3 px-4 border-b">{invoice.user.name}</td>
                   <td className="py-3 px-4 border-b">{invoice.accountNumber}</td>
                   <td className="py-3 px-4 border-b">
-                    {formatDate(invoice.billingPeriod.start)} - {formatDate(invoice.billingPeriod.end)}
+                    {formatDate(invoice.billingPeriodStart
+                   )} - {formatDate(invoice.billingPeriodEnd)}
                   </td>
                   <td className="py-3 px-4 border-b">{formatDate(invoice.issuedDate)}</td>
                   <td className={`py-3 px-4 border-b ${showAgingInfo && isOverdue ? 'text-red-600 font-semibold' : ''}`}>
@@ -213,12 +219,27 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
                       {formatDueStatus(invoice.dueStatus || (invoice.status === 'overdue' ? 'overdue' : 'due'))}
                     </span>
                   </td>
+                  {onViewInvoice && (
+                    <td className="py-3 px-4 border-b text-center">
+                      <button
+                        onClick={() => onViewInvoice(invoice.id)}
+                        className="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200"
+                        title="View invoice details and payment history"
+                      >
+                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                        View
+                      </button>
+                    </td>
+                  )}
                 </tr>
               );
             })}
             {invoices.length === 0 && (
               <tr>
-                <td colSpan={12} className="py-4 text-center text-gray-500">No invoices found</td>
+                <td colSpan={onViewInvoice ? 13 : 12} className="py-4 text-center text-gray-500">No invoices found</td>
               </tr>
             )}
           </tbody>

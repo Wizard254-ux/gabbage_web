@@ -15,6 +15,7 @@ interface Payment {
 
 export const Payments: React.FC = () => {
   const [loading, setLoading] = useState(true);
+  const [exportingPayments, setExportingPayments] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [accountNumber, setAccountNumber] = useState('');
   const [paymentHistory, setPaymentHistory] = useState<Payment[]>([]);
@@ -50,6 +51,8 @@ export const Payments: React.FC = () => {
         page,
         limit: itemsPerPage
       });
+      console.log(response.data.payments)
+
       setPaymentHistory(response.data.payments || []);
       setCurrentPage(page);
     } catch (error) {
@@ -77,6 +80,7 @@ export const Payments: React.FC = () => {
       });
       
       if (response.data.success) {
+        console.log(response.data)
         setPaymentHistory(response.data.data.payments || []);
         setPagination(response.data.data.pagination);
         setCurrentPage(page);
@@ -92,6 +96,7 @@ export const Payments: React.FC = () => {
 
   const handleExportPayments = async (e: React.FormEvent) => {
     e.preventDefault();
+    setExportingPayments(true);
     try {
       const response = await organizationService.exportPayments(exportFormData);
       // Create blob and download
@@ -106,6 +111,8 @@ export const Payments: React.FC = () => {
     } catch (error) {
       console.error('Failed to export payments:', error);
       alert('Failed to export payments');
+    } finally {
+      setExportingPayments(false);
     }
   };
 
@@ -114,7 +121,6 @@ export const Payments: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 space-y-4 sm:space-y-0">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Payment Management</h2>
           <p className="text-gray-600 mt-1">Process payments and manage financial transactions</p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -271,14 +277,26 @@ export const Payments: React.FC = () => {
               <div className="flex gap-3 pt-4">
                 <button 
                   type="submit" 
-                  className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg"
+                  disabled={exportingPayments}
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  Export
+                  {exportingPayments ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Exporting...
+                    </>
+                  ) : (
+                    'Export'
+                  )}
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowExportModal(false)}
-                  className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-3 rounded-lg font-medium transition-colors"
+                  disabled={exportingPayments}
+                  className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-3 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Cancel
                 </button>

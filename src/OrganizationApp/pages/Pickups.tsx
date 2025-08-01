@@ -90,6 +90,7 @@ export const Pickups: React.FC = () => {
       
       if (response.data.success) {
         setPickups(response.data.data);
+        console.log('pickups ',(response.data.data))
         setPagination(response.data.pagination);
       } else {
         setError('Failed to fetch pickups');
@@ -106,6 +107,7 @@ export const Pickups: React.FC = () => {
       const response = await organizationService.getPickupRoutes();
       if (response.data.success) {
         setRoutes(response.data.data);
+        console.log('fetched routes ',response.data)
       }
     } catch (err) {
       console.error('Failed to fetch routes:', err);
@@ -117,6 +119,7 @@ export const Pickups: React.FC = () => {
       const response = await organizationService.getPickupDrivers();
       if (response.data.success) {
         setDrivers(response.data.data);
+        console.log('fethed drivers ',response.data.data)
       }
     } catch (err) {
       console.error('Failed to fetch drivers:', err);
@@ -159,8 +162,6 @@ export const Pickups: React.FC = () => {
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6">Pickups</h1>
-      
       <div className="bg-white rounded-lg shadow mb-6">
         <div className="bg-gray-100 px-4 py-3 border-b border-gray-200 font-medium">
           Filter Pickups

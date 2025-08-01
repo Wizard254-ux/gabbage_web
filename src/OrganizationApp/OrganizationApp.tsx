@@ -7,7 +7,9 @@ import { Clients } from './pages/Clients';
 import { Routes } from './pages/Routes';
 import { Payments } from './pages/Payments';
 import { Invoices } from './pages/Invoices';
+import { InvoiceDetails } from './pages/InvoiceDetails';
 import { Pickups } from './pages/Pickups';
+import Bags from './pages/Bags';
 
 interface OrganizationAppProps {
   onLogout: () => void;
@@ -15,11 +17,22 @@ interface OrganizationAppProps {
 
 export const OrganizationApp: React.FC<OrganizationAppProps> = ({ onLogout }) => {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [invoiceId, setInvoiceId] = useState<string | null>(null);
+
+  const handleNavigation = (tab: string, params?: any) => {
+    if (tab === 'invoice-details' && params?.invoiceId) {
+      setInvoiceId(params.invoiceId);
+      setActiveTab('invoice-details');
+    } else {
+      setActiveTab(tab);
+      setInvoiceId(null);
+    }
+  };
 
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
-        return <Dashboard onNavigate={setActiveTab} />;
+        return <Dashboard onNavigate={handleNavigation} />;
       case 'drivers':
         return <Drivers />;
       case 'clients':
@@ -29,11 +42,15 @@ export const OrganizationApp: React.FC<OrganizationAppProps> = ({ onLogout }) =>
       case 'payments':
         return <Payments />;
       case 'invoices':
-        return <Invoices />;
+        return <Invoices onNavigate={handleNavigation} />;
+      case 'invoice-details':
+        return <InvoiceDetails invoiceId={invoiceId} onNavigate={handleNavigation} />;
       case 'pickups':
         return <Pickups />;
+      case 'bags':
+        return <Bags />;
       default:
-        return <Dashboard onNavigate={setActiveTab} />;
+        return <Dashboard onNavigate={handleNavigation} />;
     }
   };
 

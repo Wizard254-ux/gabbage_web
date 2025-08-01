@@ -147,6 +147,18 @@ export const organizationService = {
       updateData
     }),
 
+  editClientWithDocuments: (userId: string, formData: FormData) =>
+    api.put(`/auth/client/${userId}`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }),
+
+  deleteClientDocument: (userId: string, documentPath: string) =>
+    api.delete(`/auth/client/${userId}/document`, {
+      data: { documentPath }
+    }),
+
   deleteDriver: (userId: string) =>
     api.post("/auth/organization/users/manage", {
       action: "delete",
@@ -259,6 +271,15 @@ export const organizationService = {
   }) =>
     api.get("/payments", { params }),
 
+  exportPayments: (params: {
+    format?: 'csv' | 'excel';
+    startDate?: string;
+    endDate?: string;
+    status?: string;
+    paymentMethod?: string;
+  }) =>
+    api.get("/payments/export", { params, responseType: 'blob' }),
+
   getPaymentById: (paymentId: string) =>
     api.get(`/payments/${paymentId}`),
 
@@ -314,8 +335,30 @@ export const organizationService = {
     accountNumber?: string;
   }) =>
     api.get("/invoices/aging-summary", { params }),
+
+  exportInvoices: (params?: {
+    format?: 'csv' | 'excel';
+    status?: string;
+    startDate?: string;
+    endDate?: string;
+    accountNumber?: string;
+  }) =>
+    api.get("/invoices/export", { params, responseType: 'blob' }),
+
+  exportAgingSummary: (params?: {
+    format?: 'csv' | 'excel';
+    paymentStatus?: string;
+    dueStatus?: string;
+    startDate?: string;
+    endDate?: string;
+    accountNumber?: string;
+  }) =>
+    api.get("/invoices/aging-summary/export", { params, responseType: 'blob' }),
     
   getInvoiceById: (invoiceId: string) =>
+    api.get(`/invoices/${invoiceId}`),
+    
+  getInvoiceWithPayments: (invoiceId: string) =>
     api.get(`/invoices/${invoiceId}`),
     
   createInvoice: (invoiceData: {
@@ -333,4 +376,36 @@ export const organizationService = {
     limit?: number;
   }) =>
     api.get("/payments/history", { params }),
+
+  // Bag Distribution Management
+  getClientBagHistory: (clientId: string, params?: {
+    page?: number;
+    limit?: number;
+    startDate?: string;
+    endDate?: string;
+  }) =>
+    api.get(`/bags/history/${clientId}`, { params }),
+
+  getBagDistributionHistory: (params?: {
+    page?: number;
+    limit?: number;
+    startDate?: string;
+    endDate?: string;
+    clientId?: string;
+  }) =>
+    api.get("/bags/history", { params }),
+
+  distributeBags: (distributionData: {
+    client_id: string;
+    recipient_email: string;
+    number_of_bags: number;
+    notes?: string;
+  }) =>
+    api.post("/bags/distribute", distributionData),
+
+  verifyBagDistribution: (verificationData: {
+    distribution_id: string;
+    verification_code: string;
+  }) =>
+    api.post("/bags/verify", verificationData),
 };

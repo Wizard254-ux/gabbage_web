@@ -6,6 +6,7 @@ interface Payment {
   userId: string;
   accountNumber: string;
   amount: number;
+  invoice:any,
   currency: string;
   paymentMethod: string;
   transactionId: string;
@@ -30,6 +31,17 @@ interface Payment {
     updatedAt: string;
     invoiceNumber: string;
   };
+  invoiceIds?: Array<{
+    _id: string;
+    invoiceNumber: string;
+  }>;
+  invoiceAllocations?: Array<{
+    invoiceId: {
+      _id: string;
+      invoiceNumber: string;
+    };
+    amount: number;
+  }>;
   status: string;
   allocationStatus?: string;
   allocatedAmount?: number;
@@ -120,7 +132,9 @@ export const PaymentHistoryTable: React.FC<PaymentHistoryTableProps> = ({
               <th className="py-3 px-4 border-b text-left">Phone</th>
               <th className="py-3 px-4 border-b text-left">Invoice</th>
               <th className="py-3 px-4 border-b text-left">Status</th>
-              <th className="py-3 px-4 border-b text-left">Allocation</th>
+              <th className="py-3 px-4 border-b text-left">Allocation Status</th>
+              <th className="py-3 px-4 border-b text-left">Allocated Amount</th>
+              <th className="py-3 px-4 border-b text-left">Remaining Amount</th>
             </tr>
           </thead>
           <tbody>
@@ -136,23 +150,52 @@ export const PaymentHistoryTable: React.FC<PaymentHistoryTableProps> = ({
                 <td className="py-3 px-4 border-b font-mono">{payment.mpesaReceiptNumber || '-'}</td>
                 <td className="py-3 px-4 border-b">{payment.phoneNumber}</td>
                 <td className="py-3 px-4 border-b">
-                  {payment.invoiceId ? payment.invoiceId.invoiceNumber : '-'}
+                  {payment.invoiceAllocations && payment.invoiceAllocations.length > 0 ? (
+                    <div className="space-y-1">
+                      {payment.invoiceAllocations.map((allocation, idx) => (
+                        <div key={idx} className="text-xs">
+                          <span className="font-medium text-blue-600">
+                            {allocation.invoiceId.invoiceNumber}
+                          </span>
+                          <span className="text-gray-500 ml-1">
+                            (KES {allocation.amount.toLocaleString()})
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : payment.invoice ? (
+                    payment.invoice.invoiceNumber
+                  ) : (
+                    '-'
+                  )}
                 </td>
-                <td className="py-3 px-4  border-b">
+                <td className="py-3 px-4 border-b">
                   <span className={`px-2 py-1 text-xs rounded-full ${getStatusBadge(payment.status)}`}>
                     {payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}
                   </span>
                 </td>
-                <td className="py-3 px-1 border-b">
-                  
+                <td className="`">
                   {payment.allocationStatus ? (
-                    <span className={`px-2 py-1 text-xs rounded-full ${getAllocationBadge(payment.allocationStatus)}`}>
+                    <span className={`font-medium text-blue-600 `}>
                       {formatAllocationStatus(payment.allocationStatus)}
-                      {payment.allocatedAmount !== undefined && payment.amount !== undefined && (
-                        <span className=" w-[8rem] text-xs mt-1">
-                          {payment.allocatedAmount}/{payment.amount} 
-                        </span>
-                      )}
+                    </span>
+                  ) : (
+                    '-'
+                  )}
+                </td>
+                <td className="py-3 px-4 border-b">
+                  {payment.allocatedAmount !== undefined ? (
+                    <span className="font-medium text-blue-600">
+                      KES {payment.allocatedAmount.toLocaleString()}
+                    </span>
+                  ) : (
+                    '-'
+                  )}
+                </td>
+                <td className="py-3 px-4 border-b">
+                  {payment.remainingAmount !== undefined ? (
+                    <span className="font-medium text-orange-600">
+                      KES {payment.remainingAmount.toLocaleString()}
                     </span>
                   ) : (
                     '-'
@@ -162,7 +205,7 @@ export const PaymentHistoryTable: React.FC<PaymentHistoryTableProps> = ({
             ))}
             {payments.length === 0 && (
               <tr>
-                <td colSpan={10} className="py-4 text-center text-gray-500">No payments found</td>
+                <td colSpan={12} className="py-4 text-center text-gray-500">No payments found</td>
               </tr>
             )}
           </tbody>

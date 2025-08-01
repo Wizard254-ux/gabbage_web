@@ -28,6 +28,8 @@ export const OrganizationManagement: React.FC<OrganizationManagementProps> = ({
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
+    const [creating, setCreating] = useState(false);
+
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -88,7 +90,7 @@ export const OrganizationManagement: React.FC<OrganizationManagementProps> = ({
   const handleDocumentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     setDocuments(files);
-    
+
     const previews = files.map(file => {
       if (file.type.startsWith('image/')) {
         return URL.createObjectURL(file);
@@ -107,12 +109,14 @@ export const OrganizationManagement: React.FC<OrganizationManagementProps> = ({
 
   const handleAddOrganization = async (e: React.FormEvent) => {
     e.preventDefault();
+        setCreating(true);
+
     try {
       const formDataObj = new FormData();
       Object.entries(formData).forEach(([key, value]) => {
         formDataObj.append(key, value);
       });
-      
+
       documents.forEach((file) => {
         formDataObj.append('documents', file);
       });
@@ -132,6 +136,9 @@ export const OrganizationManagement: React.FC<OrganizationManagementProps> = ({
       fetchOrganizations();
     } catch (error) {
       console.error("Failed to add organization:", error);
+    } finally {
+          setCreating(false);
+
     }
   };
 
@@ -156,7 +163,7 @@ export const OrganizationManagement: React.FC<OrganizationManagementProps> = ({
   const handleUpdateOrganization = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedOrg || isUpdating) return;
-    
+
     setIsUpdating(true);
     try {
       const changedData: any = {};
@@ -164,12 +171,12 @@ export const OrganizationManagement: React.FC<OrganizationManagementProps> = ({
       if (editFormData.email !== selectedOrg.email) changedData.email = editFormData.email;
       if (editFormData.phone !== selectedOrg.phone) changedData.phone = editFormData.phone;
       if (editFormData.isActive !== selectedOrg.isActive) changedData.isActive = editFormData.isActive;
-      
+
       if (Object.keys(changedData).length === 0) {
         setShowEditModal(false);
         return;
       }
-      
+
       await adminService.updateOrganization(selectedOrg.id, changedData);
       setShowEditModal(false);
       setSelectedOrg(null);
@@ -191,7 +198,7 @@ export const OrganizationManagement: React.FC<OrganizationManagementProps> = ({
 
   const handleDeleteConfirm = async () => {
     if (!selectedOrg || isDeleting) return;
-    
+
     setIsDeleting(true);
     try {
       await adminService.deleteOrganization(selectedOrg.id);
@@ -308,7 +315,7 @@ export const OrganizationManagement: React.FC<OrganizationManagementProps> = ({
                   </button>
                 </div>
               </div>
-              
+
               <form onSubmit={handleAddOrganization} className="px-8 py-6 space-y-6">
                 <div className="grid grid-cols-1 gap-6">
                   <div>
@@ -427,7 +434,7 @@ export const OrganizationManagement: React.FC<OrganizationManagementProps> = ({
                         </div>
                       </label>
                     </div>
-                    
+
                     {documents.length > 0 && (
                       <div className="mt-4 space-y-3">
                         <h4 className="text-sm font-medium text-gray-700">Uploaded Files ({documents.length})</h4>
@@ -463,7 +470,7 @@ export const OrganizationManagement: React.FC<OrganizationManagementProps> = ({
                   )}
                 </div>
                 </div>
-                
+
                 <div className="flex gap-4 pt-6 border-t">
                   <button
                     type="button"
@@ -478,10 +485,11 @@ export const OrganizationManagement: React.FC<OrganizationManagementProps> = ({
                     Cancel
                   </button>
                   <button
+                      disabled={creating}
                     type="submit"
                     className="flex-1 px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl transition-colors shadow-lg hover:shadow-xl"
                   >
-                    Create Organization
+                    {creating ? "Creating ...": "Create Organization"}
                   </button>
                 </div>
               </form>
@@ -710,42 +718,42 @@ export const OrganizationManagement: React.FC<OrganizationManagementProps> = ({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide">Organization Name *</label>
-                    <input 
-                      type="text" 
-                      value={editFormData.name} 
-                      onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })} 
-                      className="w-full px-4 py-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all bg-gray-50 focus:bg-white" 
+                    <input
+                      type="text"
+                      value={editFormData.name}
+                      onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                      className="w-full px-4 py-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all bg-gray-50 focus:bg-white"
                       placeholder="Enter organization name"
-                      required 
+                      required
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide">Email Address *</label>
-                    <input 
-                      type="email" 
-                      value={editFormData.email} 
-                      onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })} 
-                      className="w-full px-4 py-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all bg-gray-50 focus:bg-white" 
+                    <input
+                      type="email"
+                      value={editFormData.email}
+                      onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+                      className="w-full px-4 py-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all bg-gray-50 focus:bg-white"
                       placeholder="organization@example.com"
-                      required 
+                      required
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide">Phone Number *</label>
-                    <input 
-                      type="tel" 
-                      value={editFormData.phone} 
-                      onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })} 
-                      className="w-full px-4 py-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all bg-gray-50 focus:bg-white" 
+                    <input
+                      type="tel"
+                      value={editFormData.phone}
+                      onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
+                      className="w-full px-4 py-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all bg-gray-50 focus:bg-white"
                       placeholder="+1 (555) 123-4567"
-                      required 
+                      required
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide">Status</label>
-                    <select 
-                      value={editFormData.isActive.toString()} 
-                      onChange={(e) => setEditFormData({ ...editFormData, isActive: e.target.value === 'true' })} 
+                    <select
+                      value={editFormData.isActive.toString()}
+                      onChange={(e) => setEditFormData({ ...editFormData, isActive: e.target.value === 'true' })}
                       className="w-full px-4 py-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all bg-gray-50 focus:bg-white"
                     >
                       <option value="true">Active</option>
@@ -754,15 +762,15 @@ export const OrganizationManagement: React.FC<OrganizationManagementProps> = ({
                   </div>
                 </div>
                 <div className="flex gap-4 pt-8 border-t-2 border-gray-100">
-                  <button 
-                    type="button" 
-                    onClick={() => setShowEditModal(false)} 
+                  <button
+                    type="button"
+                    onClick={() => setShowEditModal(false)}
                     className="flex-1 px-8 py-4 border-2 border-gray-300 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-all"
                   >
                     Cancel
                   </button>
-                  <button 
-                    type="submit" 
+                  <button
+                    type="submit"
                     disabled={isUpdating}
                     className="flex-1 px-8 py-4 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-bold rounded-xl transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
                   >
@@ -793,18 +801,18 @@ export const OrganizationManagement: React.FC<OrganizationManagementProps> = ({
               </div>
               <div className="px-8 py-6">
                 <p className="text-gray-700 mb-6">
-                  Are you sure you want to delete <span className="font-bold text-gray-900">{selectedOrg.name}</span>? 
+                  Are you sure you want to delete <span className="font-bold text-gray-900">{selectedOrg.name}</span>?
                   This will permanently remove the organization and all associated data.
                 </p>
                 <div className="flex gap-4">
-                  <button 
-                    onClick={() => setShowDeleteModal(false)} 
+                  <button
+                    onClick={() => setShowDeleteModal(false)}
                     className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-all"
                   >
                     Cancel
                   </button>
-                  <button 
-                    onClick={handleDeleteConfirm} 
+                  <button
+                    onClick={handleDeleteConfirm}
                     disabled={isDeleting}
                     className="flex-1 px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-bold rounded-xl transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
                   >
