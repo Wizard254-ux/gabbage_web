@@ -151,6 +151,21 @@ export const Pickups: React.FC = () => {
     fetchPickups(1);
   };
 
+  const handleCreateWeeklyPickups = async () => {
+    try {
+      setLoading(true);
+      const response = await organizationService.createWeeklyPickups();
+      if (response.data.success) {
+        alert(`Created ${response.data.data.length} weekly pickups for active clients`);
+        fetchPickups(pagination.currentPage);
+      }
+    } catch (err: any) {
+      alert('Failed to create weekly pickups: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleStatusUpdate = async (id: string, status: string, driverId?: string) => {
     try {
       await organizationService.updatePickupStatus(id, { status, driverId });
@@ -262,6 +277,13 @@ export const Pickups: React.FC = () => {
                 className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
               >
                 Clear Filters
+              </button>
+              <button 
+                type="button"
+                onClick={handleCreateWeeklyPickups}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              >
+                Create Weekly Pickups
               </button>
             </div>
           </form>

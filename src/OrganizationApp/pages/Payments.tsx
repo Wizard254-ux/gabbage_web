@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { organizationService } from '../../services/organizationService';
 import { PaymentHistoryTable } from '../components/PaymentHistoryTable';
+import { PaymentProcessingModal } from '../components/PaymentProcessingModal';
 
 interface Payment {
   _id: string;
@@ -29,6 +30,7 @@ export const Payments: React.FC = () => {
     hasPrev: false
   });
   const [activeView, setActiveView] = useState<'all' | 'search'>('all');
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
   
   // Fetch all payments on component mount
   useEffect(() => {
@@ -124,6 +126,15 @@ export const Payments: React.FC = () => {
           <p className="text-gray-600 mt-1">Process payments and manage financial transactions</p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setShowPaymentModal(true)}
+            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg flex items-center space-x-2"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            <span>Process Payment</span>
+          </button>
           <button
             onClick={() => setShowExportModal(true)}
             className="bg-white border border-green-600 text-green-600 hover:bg-green-50 px-4 py-2 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg flex items-center space-x-2"
@@ -305,6 +316,20 @@ export const Payments: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Payment Processing Modal */}
+      <PaymentProcessingModal
+        isOpen={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        onSuccess={() => {
+          // Refresh payment data after successful payment
+          if (activeView === 'search' && accountNumber) {
+            fetchPaymentHistory(1);
+          } else {
+            fetchAllPayments(1);
+          }
+        }}
+      />
     </div>
   );
 };

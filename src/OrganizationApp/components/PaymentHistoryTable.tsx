@@ -13,7 +13,12 @@ interface Payment {
   paymentMethod: string;
   transactionId: string;
   mpesaReceiptNumber?: string;
+  chequeNumber?: string;
+  bankName?: string;
+  transferReference?: string;
+  rtgsReference?: string;
   phoneNumber: string;
+  clientName?: string;
   invoiceId?: {
     billingPeriod: {
       start: string;
@@ -127,10 +132,11 @@ export const PaymentHistoryTable: React.FC<PaymentHistoryTableProps> = ({
             <tr>
               <th className="py-3 px-4 border-b text-left">#</th>
               <th className="py-3 px-4 border-b text-left">Date</th>
+              <th className="py-3 px-4 border-b text-left">Client Name</th>
               <th className="py-3 px-4 border-b text-left">Account</th>
               <th className="py-3 px-4 border-b text-left">Amount</th>
               <th className="py-3 px-4 border-b text-left">Method</th>
-              <th className="py-3 px-4 border-b text-left">Receipt</th>
+              <th className="py-3 px-4 border-b text-left">Reference</th>
               <th className="py-3 px-4 border-b text-left">Phone</th>
               <th className="py-3 px-4 border-b text-left">Invoice</th>
               <th className="py-3 px-4 border-b text-left">Status</th>
@@ -144,13 +150,21 @@ export const PaymentHistoryTable: React.FC<PaymentHistoryTableProps> = ({
               <tr key={payment._id} className="hover:bg-gray-50">
                 <td className="py-3 px-4 border-b">{startIndex + index + 1}</td>
                 <td className="py-3 px-4 border-b">{formatDate(payment.paidAt || payment.createdAt)}</td>
+                <td className="py-3 px-4 border-b font-medium">{payment.clientName || payment.metadata?.payerName || '-'}</td>
                 <td className="py-3 px-4 border-b">{payment.accountNumber}</td>
                 <td className="py-3 px-4 border-b font-medium text-green-600">
                   KES {payment.amount.toLocaleString()}
                 </td>
                 <td className="py-3 px-4 border-b capitalize">{payment.paymentMethod}</td>
-                <td className="py-3 px-4 border-b font-mono">{payment.mpesaReceiptNumber || '-'}</td>
-                <td className="py-3 px-4 border-b">{payment.phoneNumber}</td>
+                <td className="py-3 px-4 border-b font-mono">
+                  {payment.mpesaReceiptNumber || 
+                   payment.chequeNumber || 
+                   payment.transferReference || 
+                   payment.rtgsReference || 
+                   payment.transactionId || 
+                   '-'}
+                </td>
+                <td className="py-3 px-4 border-b">{payment.phoneNumber || '-'}</td>
                 <td className="py-3 px-4 border-b">
                   {payment.invoiceAllocations && payment.invoiceAllocations.length > 0 ? (
                     <div className="space-y-1">
@@ -207,7 +221,7 @@ export const PaymentHistoryTable: React.FC<PaymentHistoryTableProps> = ({
             ))}
             {payments.length === 0 && (
               <tr>
-                <td colSpan={12} className="py-4 text-center text-gray-500">No payments found</td>
+                <td colSpan={13} className="py-4 text-center text-gray-500">No payments found</td>
               </tr>
             )}
           </tbody>

@@ -136,14 +136,17 @@ export const Drivers: React.FC = () => {
 
   useEffect(() => {
     fetchDrivers();
-    fetchRoutes();
+    // fetchRoutes(); // Disabled due to association error
   }, []);
 
   const fetchDrivers = async () => {
     try {
+      console.log('Fetching drivers...');
       const response = await organizationService.listDrivers();
-      setDrivers(response.data.users || []);
-      console.log('drivers ',response.data)
+      console.log('Full response:', response);
+      console.log('Response data:', response.data);
+      console.log('Users array:', response.data?.users);
+      setDrivers(response.data?.users || []);
     } catch (error) {
       console.error('Failed to fetch drivers:', error);
     } finally {
@@ -153,9 +156,9 @@ export const Drivers: React.FC = () => {
 
   const fetchRoutes = async () => {
     try {
-      const response = await organizationService.getAllRoutes();
-      setRoutes(response.data.data || []);
-      console.log('drivers routes ',response.data)
+      // const response = await organizationService.getAllRoutes();
+      // setRoutes(response.data.data || []);
+      setRoutes([]); // Temporary fix
     } catch (error) {
       console.error('Failed to fetch routes:', error);
     }
@@ -387,8 +390,8 @@ export const Drivers: React.FC = () => {
     }
   };
 
-  const handleAdd = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleAdd = async () => {
+    console.log('Add driver clicked', addFormData);
     setAddingDriver(true);
     try {
       const formData = new FormData();
@@ -403,7 +406,8 @@ export const Drivers: React.FC = () => {
         }
       }
 
-      await organizationService.createDriverWithMultipart(formData);
+      const result = await organizationService.createDriverWithMultipart(formData);
+      console.log('Driver creation result:', result);
       setShowAddModal(false);
       setAddFormData({ name: '', email: '', phone: '' });
       setDocumentsFiles(null);
@@ -670,8 +674,7 @@ export const Drivers: React.FC = () => {
         fullWidth
       >
         <DialogTitle>Add New Driver</DialogTitle>
-        <form onSubmit={handleAdd}>
-          <DialogContent>
+        <DialogContent>
             <Grid container spacing={2} sx={{ mt: 1 }}>
               <Grid item xs={12}>
                 <TextField
@@ -729,15 +732,14 @@ export const Drivers: React.FC = () => {
           <DialogActions sx={{ p: 3 }}>
             <Button onClick={() => setShowAddModal(false)}>Cancel</Button>
             <Button
-              type="submit"
               variant="contained"
               disabled={addingDriver}
               startIcon={addingDriver ? <CircularProgress size={20} /> : <AddIcon />}
+              onClick={handleAdd}
             >
               {addingDriver ? 'Adding...' : 'Add Driver'}
             </Button>
           </DialogActions>
-        </form>
       </Dialog>
 
       {/* Edit Driver Dialog */}

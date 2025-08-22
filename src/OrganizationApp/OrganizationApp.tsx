@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { Navbar } from './components/Navbar';
 import { Dashboard } from './pages/Dashboard';
@@ -16,8 +16,15 @@ interface OrganizationAppProps {
 }
 
 export const OrganizationApp: React.FC<OrganizationAppProps> = ({ onLogout }) => {
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState(() => {
+    return sessionStorage.getItem('activeTab') || 'dashboard';
+  });
   const [invoiceId, setInvoiceId] = useState<string | null>(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    sessionStorage.setItem('activeTab', activeTab);
+  }, [activeTab]);
 
   const handleNavigation = (tab: string, params?: {invoiceId?: string}) => {
     if (tab === 'invoice-details' && params?.invoiceId) {
@@ -27,6 +34,7 @@ export const OrganizationApp: React.FC<OrganizationAppProps> = ({ onLogout }) =>
       setActiveTab(tab);
       setInvoiceId(null);
     }
+    sessionStorage.setItem('activeTab', tab);
   };
 
   const renderContent = () => {
@@ -56,15 +64,18 @@ export const OrganizationApp: React.FC<OrganizationAppProps> = ({ onLogout }) =>
 
   return (
     <div className="h-screen bg-white flex overflow-hidden">
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+      <Sidebar 
+        activeTab={activeTab} 
+        setActiveTab={setActiveTab}
+        isMobileMenuOpen={isMobileMenuOpen}
+        setIsMobileMenuOpen={setIsMobileMenuOpen}
+      />
       
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <Navbar onLogout={onLogout} />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <Navbar onLogout={onLogout} setIsMobileMenuOpen={setIsMobileMenuOpen} />
         
-        <main className="flex-1 overflow-y-auto bg-gray-50 w-full">
-          <div className="w-full max-w-none">
-            {renderContent()}
-          </div>
+        <main className="flex-1 overflow-y-auto bg-gray-50">
+          {renderContent()}
         </main>
       </div>
     </div>

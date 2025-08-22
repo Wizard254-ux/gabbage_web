@@ -8,3 +8,16 @@
 .bg-yellow-25 {
   background-color: #fffbeb;
 }
+
+/* Mobile layout fixes */
+@media (max-width: 1023px) {
+  .sidebar-hidden {
+    margin-left: 0 !important;
+  }
+  
+  /* Ensure no white space on mobile */
+  main {
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+}

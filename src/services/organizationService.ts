@@ -1,441 +1,177 @@
-import axios from "axios";
+import axios from 'axios';
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 const api = axios.create({
-  // baseURL: "https://garbagesystem.onrender.com/api",
-  baseURL: "https://garbagesystem.onrender.com/api",
-  timeout: 10000,
+  baseURL: API_BASE_URL,
   withCredentials: true,
-  headers: {
-    "Content-Type": "application/json",
-  },
 });
 
-api.interceptors.request.use(
-  (config) => {
-    const admin = localStorage.getItem('admin');
-    if (admin) {
-      try {
-        const adminData = JSON.parse(admin);
-        if (adminData && adminData.token) {
-          config.headers.Authorization = `Bearer ${adminData.token}`;
-          console.log('Added auth token to request');
-        } else {
-          console.warn('No token found in admin data');
-        }
-      } catch (error) {
-        console.error('Error parsing admin data:', error);
-        localStorage.removeItem('admin');
-      }
-    } else {
-      console.warn('No admin data found in localStorage');
+// Add auth token to requests
+api.interceptors.request.use((config) => {
+  const adminData = localStorage.getItem('admin');
+  if (adminData) {
+    const token = JSON.parse(adminData).token;
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+      console.log('Added auth token to request:', config.method?.toUpperCase(), config.url);
     }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
+  }
+  return config;
+});
 
+// Add response interceptor for debugging
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log('API Response:', response.status, response.config.url, response.data);
+    return response;
+  },
   (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('admin');
-      window.location.reload();
-    }
+    console.error('API Error:', error.response?.status, error.config?.url, error.response?.data);
     return Promise.reject(error);
   }
 );
 
+let pendingListRequest = null;
+
 export const organizationService = {
-  // Pickup Management
-  getPickups: (params?: { 
-    page?: number; 
-    limit?: number; 
-    startDate?: string;
-    endDate?: string;
-    status?: string;
-    routeId?: string;
-    driverId?: string;
-  }) =>
-    api.get("/pickups", { params }),
-
-  createPickup: (pickupData: {
-    userId: string;
-    routeId: string;
-    scheduledDate: string;
-  }) =>
-    api.post("/pickups", pickupData),
-
-  updatePickupStatus: (id: string, updateData: {
-    status?: string;
-    driverId?: string;
-    notes?: string;
-  }) =>
-    api.put(`/pickups/${id}`, updateData),
-
-  getPickupRoutes: () =>
-    api.get("/pickups/routes"),
-
-  getPickupDrivers: () =>
-    api.get("/pickups/drivers"),
-
-  // User Management
-  listDrivers: () =>
-    api.post("/auth/organization/users/manage", {
-      action: "list",
-      userType: "driver"
-    }),
-
-  listClients: () =>
-    api.post("/auth/organization/users/manage", {
-      action: "list",
-      userType: "client"
-    }),
-
-  createDriver: (userData: {
-    name: string;
-    email: string;
-    phone: string;
-    address?: string;
-    licenseNumber?: string;
-  }) =>
-    api.post("/auth/organization/users/manage", {
-      action: "create",
-      userType: "driver",
-      userData
-    }),
-
-  createDriverWithMultipart: (formData: FormData) =>
-    api.post("/auth/register/driver", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    }),
-
-  createClient: (userData: {
-    name: string;
-    email: string;
-    phone: string;
-    address?: string;
-    accountNumber?: string;
-  }) =>
-    api.post("/auth/organization/users/manage", {
-      action: "create",
-      userType: "client",
-      userData
-    }),
-
-  createClientWithMultipart: (formData: FormData) =>
-    api.post("/auth/register/client", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    }),
-
-  editDriver: (userId: string, updateData: {
-    name?: string;
-    email?: string;
-    phone?: string;
-    address?: string;
-    licenseNumber?: string;
-    status?: string;
-  }) =>
-    api.post("/auth/organization/users/manage", {
-      action: "edit",
-      userType: "driver",
-      userId,
-      updateData
-    }),
-
-  editDriverWithDocuments: (userId: string, formData: FormData) =>
-    api.put(`/auth/driver/${userId}`, formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    }),
-
-  deleteDriverDocument: (userId: string, documentPath: string) =>
-    api.delete(`/auth/driver/${userId}/document`, {
-      data: { documentPath }
-    }),
-
-  editClient: (userId: string, updateData: {
-    name?: string;
-    email?: string;
-    phone?: string;
-    address?: string;
-    accountNumber?: string;
-    status?: string;
-  }) =>
-    api.post("/auth/organization/users/manage", {
-      action: "edit",
-      userType: "client",
-      userId,
-      updateData
-    }),
-
-  editClientWithDocuments: (userId: string, formData: FormData) =>
-    api.put(`/auth/client/${userId}`, formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    }),
-
-  deleteClientDocument: (userId: string, documentPath: string) =>
-    api.delete(`/auth/client/${userId}/document`, {
-      data: { documentPath }
-    }),
-
-  deleteDriver: (userId: string) =>
-    api.post("/auth/organization/users/manage", {
-      action: "delete",
-      userType: "driver",
-      userId
-    }),
-
-  deleteClient: (userId: string) =>
-    api.post("/auth/organization/users/manage", {
-      action: "delete",
-      userType: "client",
-      userId
-    }),
+  // List organizations
+  list: async (params = {}) => {
+    if (pendingListRequest) {
+      console.log('Request already pending, waiting...');
+      return await pendingListRequest;
+    }
     
-  sendDriverCredentials: (driverId: string) =>
-    api.post("/auth/send-driver-credentials", {
+    pendingListRequest = api.post('/auth/organization/manage', {
+      action: 'list',
+      ...params
+    }).then(response => response.data)
+    .finally(() => {
+      pendingListRequest = null;
+    });
+    
+    return await pendingListRequest;
+  },
+
+  // Get organization stats
+  getStats: async () => {
+    const response = await api.get('/admin/stats');
+    return response.data;
+  },
+
+  // Create organization
+  create: async (data: { name: string; email: string; phone: string }) => {
+    const response = await api.post('/admin/organizations/create', data);
+    return response.data;
+  },
+
+  // Create organization with files
+  createWithFiles: async (formData: FormData) => {
+    const response = await api.post('/auth/register/organization', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  // Update organization
+  update: async (organizationId: number | string, updateData: any) => {
+    console.log('Updating organization:', organizationId, updateData);
+    const response = await api.post('/auth/organization/manage', {
+      action: 'edit',
+      organizationId,
+      updateData
+    });
+    return response.data;
+  },
+
+  // Delete organization
+  delete: async (organizationId: number | string) => {
+    console.log('Deleting organization:', organizationId);
+    const response = await api.post('/auth/organization/manage', {
+      action: 'delete',
+      organizationId
+    });
+    return response.data;
+  },
+
+  // Send credentials
+  sendCredentials: async (organizationId: number | string) => {
+    console.log('Sending credentials for organization:', organizationId);
+    const response = await api.post('/admin/organizations/send-credentials', {
+      organizationId
+    });
+    return response.data;
+  },
+
+  // Get organization details
+  getDetails: async (organizationId: number | string) => {
+    console.log('Getting details for organization:', organizationId);
+    const response = await api.get(`/admin/organizations/${organizationId}`);
+    return response.data;
+  },
+
+  // Create driver with multipart
+  createDriverWithMultipart: async (formData: FormData) => {
+    const response = await api.post('/auth/register/driver', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  // List drivers
+  listDrivers: async () => {
+    const response = await api.get('/auth/drivers');
+    return response;
+  },
+
+  // Get driver details
+  getDriverDetails: async (driverId: string) => {
+    const response = await api.get(`/drivers/${driverId}`);
+    return response;
+  },
+
+  // Edit driver with documents
+  editDriverWithDocuments: async (driverId: string, formData: FormData) => {
+    const response = await api.put(`/auth/driver/${driverId}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response;
+  },
+
+  // Delete driver
+  deleteDriver: async (driverId: string) => {
+    const response = await api.post('/auth/organization/users/manage', {
+      action: 'delete',
+      userType: 'driver',
+      userId: driverId
+    });
+    return response;
+  },
+
+  // Send driver credentials
+  sendDriverCredentials: async (driverId: string) => {
+    const response = await api.post('/auth/send-driver-credentials', {
       driverId
-    }),
-    
-  getDriverDetails: (driverId: string) =>
-    api.get(`/auth/driver/${driverId}`),
+    });
+    return response;
+  },
 
-  getClientDetails: (clientId: string) =>
-    api.get(`/auth/client/${clientId}`),
+  // Delete driver document
+  deleteDriverDocument: async (driverId: string, documentPath: string) => {
+    const response = await api.delete(`/auth/driver/${driverId}/document`, {
+      data: { documentPath }
+    });
+    return response;
+  },
 
-  getClientPayments: (clientId: string, params?: { page?: number; limit?: number; startDate?: string; endDate?: string }) =>
-    api.get(`/payments/client/${clientId}/payments`, { params }),
-
-  getClientInvoices: (clientId: string, params?: { page?: number; limit?: number; status?: string; startDate?: string; endDate?: string }) =>
-    api.get(`/invoices/client/${clientId}`, { params }),
-
-  // Route Management
-  createRoute: (routeData: {
-    name: string;
-    description?: string;
-    startLocation?: string;
-    endLocation?: string;
-    waypoints?: string[];
-  }) =>
-    api.post("/routes", {
-      action: "create",
-      ...routeData
-    }),
-
-  getAllRoutes: () =>
-    api.post("/routes", {
-      action: "read"
-    }),
-
-  getRoute: (id: string) =>
-    api.post("/routes", {
-      action: "get",
-      id
-    }),
-
-  updateRoute: (id: string, routeData: {
-    name?: string;
-    description?: string;
-    startLocation?: string;
-    endLocation?: string;
-    waypoints?: string[];
-  }) =>
-    api.post("/routes", {
-      action: "update",
-      id,
-      ...routeData
-    }),
-
-  deleteRoute: (id: string) =>
-    api.post("/routes", {
-      action: "delete",
-      id
-    }),
-
-  // Payment Management
-  processPayment: (paymentData: {
-    accountNumber: string;
-    amount: number;
-    paymentMethod: string;
-    mpesaReceiptNumber?: string;
-    phoneNumber: string;
-    transactionId: string;
-  }) =>
-    api.post("/payments/process", paymentData),
-
-  generateMonthlyInvoices: () =>
-    api.post("/payments/generate-invoices"),
-
-  getPaymentHistory: (accountNumber: string, params?: { page?: number; limit?: number }) =>
-    api.get(`/payments/history/${accountNumber}`, { params }),
-
-  getAccountStatement: (accountNumber: string, params?: { 
-    startDate?: string; 
-    endDate?: string; 
-    page?: number; 
-    limit?: number 
-  }) =>
-    api.get(`/payments/statement/${accountNumber}`, { params }),
-
-  getPaymentsByDateRange: (params: {
-    startDate: string;
-    endDate: string;
-    page?: number;
-    limit?: number;
-  }) =>
-    api.get("/payments/transactions", { params }),
-
-  getPaymentDetails: (paymentId: string) =>
-    api.get(`/payments/${paymentId}`),
-
-  updatePaymentStatus: (paymentId: string, status: string) =>
-    api.put(`/payments/${paymentId}/status`, { status }),
-
-  // Additional Payment APIs from Postman collection
-  getAllPayments: (params?: { 
-    page?: number; 
-    limit?: number; 
-    status?: string; 
-    paymentMethod?: string;
-    startDate?: string;
-    endDate?: string;
-  }) =>
-    api.get("/payments", { params }),
-
-  exportPayments: (params: {
-    format?: 'csv' | 'excel';
-    startDate?: string;
-    endDate?: string;
-    status?: string;
-    paymentMethod?: string;
-  }) =>
-    api.get("/payments/export", { params, responseType: 'blob' }),
-
-  getPaymentById: (paymentId: string) =>
-    api.get(`/payments/${paymentId}`),
-
-  reversePayment: (paymentId: string, reason?: string) =>
-    api.post(`/payments/${paymentId}/reverse`, { reason }),
-
-  validatePayment: (paymentData: {
-    accountNumber: string;
-    mpesaReceiptNumber: string;
-    amount: number;
-  }) =>
-    api.post("/payments/validate", paymentData),
-
-  getPaymentStats: (params?: { 
-    startDate?: string; 
-    endDate?: string; 
-    groupBy?: 'day' | 'week' | 'month' 
-  }) =>
-    api.get("/payments/stats", { params }),
-
-  reconcilePayments: (params: { 
-    startDate: string; 
-    endDate: string; 
-  }) =>
-    api.post("/payments/reconcile", params),
-
-  // Invoice Management
-  getAllInvoices: (params?: { 
-    page?: number; 
-    limit?: number; 
-    status?: string;
-    startDate?: string;
-    endDate?: string;
-    accountNumber?: string;
-  }) =>
-    api.get("/auth/invoices", { params }),
-    
-  getAgingSummary: (params?: {
-    page?: number;
-    limit?: number;
-    paymentStatus?: string;
-    dueStatus?: string;
-    startDate?: string;
-    endDate?: string;
-    accountNumber?: string;
-  }) =>
-    api.get("/invoices/aging-summary", { params }),
-
-  exportInvoices: (params?: {
-    format?: 'csv' | 'excel';
-    status?: string;
-    startDate?: string;
-    endDate?: string;
-    accountNumber?: string;
-  }) =>
-    api.get("/invoices/export", { params, responseType: 'blob' }),
-
-  exportAgingSummary: (params?: {
-    format?: 'csv' | 'excel';
-    paymentStatus?: string;
-    dueStatus?: string;
-    startDate?: string;
-    endDate?: string;
-    accountNumber?: string;
-  }) =>
-    api.get("/invoices/aging-summary/export", { params, responseType: 'blob' }),
-    
-  getInvoiceById: (invoiceId: string) =>
-    api.get(`/invoices/${invoiceId}`),
-    
-  getInvoiceWithPayments: (invoiceId: string) =>
-    api.get(`/invoices/${invoiceId}`),
-    
-  createInvoice: (invoiceData: {
-    userId: string;
-    totalAmount: number;
-    dueDate: string;
-    billingPeriod: { start: string; end: string };
-  }) => api.post("/invoices", invoiceData),
-    
-  deleteInvoice: (id: string) => api.delete(`/invoices/${id}`),
-    
-  // Payment History
-  getAllPaymentHistory: (params?: {
-    page?: number;
-    limit?: number;
-  }) =>
-    api.get("/payments/history", { params }),
-
-  // Bag Distribution Management
-  getClientBagHistory: (clientId: string, params?: {
-    page?: number;
-    limit?: number;
-    startDate?: string;
-    endDate?: string;
-  }) =>
-    api.get(`/bags/history/${clientId}`, { params }),
-
-  getBagDistributionHistory: (params?: {
-    page?: number;
-    limit?: number;
-    startDate?: string;
-    endDate?: string;
-    clientId?: string;
-  }) =>
-    api.get("/bags/history", { params }),
-
-  distributeBags: (distributionData: {
-    client_id: string;
-    recipient_email: string;
-    number_of_bags: number;
-    notes?: string;
-  }) =>
-    api.post("/bags/distribute", distributionData),
-
-  verifyBagDistribution: (verificationData: {
-    distribution_id: string;
-    verification_code: string;
-  }) =>
-    api.post("/bags/verify", verificationData),
+  // Get all routes - disabled
+  getAllRoutes: async () => {
+    return { data: { data: [] } };
+  }
 };

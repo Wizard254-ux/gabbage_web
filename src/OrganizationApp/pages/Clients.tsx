@@ -37,9 +37,8 @@ import {
   FormControlLabel,
   Tabs,
   Tab,
-
 } from '@mui/material';
-import { GridLegacy as Grid } from "@mui/material";
+import { Grid } from "@mui/material";
 import {
   MoreVert as MoreVertIcon,
   Search as SearchIcon,
@@ -120,6 +119,8 @@ export const Clients: React.FC = () => {
   const [loadingClientDetails, setLoadingClientDetails] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [showSuccessSnackbar, setShowSuccessSnackbar] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [showErrorSnackbar, setShowErrorSnackbar] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [isDocumentEditMode, setIsDocumentEditMode] = useState(false);
@@ -218,6 +219,7 @@ export const Clients: React.FC = () => {
     monthlyRate: 0,
     numberOfUnits: 1,
     gracePeriod: 5,
+    pickUpDay: 'wednesday',
   });
 
   const [addFormData, setAddFormData] = useState({
@@ -233,6 +235,7 @@ export const Clients: React.FC = () => {
     clientType: 'residential',
     serviceStartDate: '',
     gracePeriod: 5,
+    pickUpDay: 'wednesday',
   });
 
   const [documentsFiles, setDocumentsFiles] = useState<FileList | null>(null);
@@ -329,6 +332,7 @@ export const Clients: React.FC = () => {
       monthlyRate: client.monthlyRate || 0,
       numberOfUnits: client.numberOfUnits || 1,
       gracePeriod: client.gracePeriod || 5,
+      pickUpDay: client.pickUpDay || 'wednesday',
     });
     setDocumentsToDelete([]);
     setEditDocumentsFiles(null);
@@ -402,6 +406,7 @@ export const Clients: React.FC = () => {
       formData.append('monthlyRate', editFormData.monthlyRate.toString());
       formData.append('numberOfUnits', editFormData.numberOfUnits.toString());
       formData.append('gracePeriod', editFormData.gracePeriod.toString());
+      formData.append('pickUpDay', editFormData.pickUpDay);
 
       documentsToDelete.forEach(docPath => {
         formData.append('documentsToDelete', docPath);
@@ -547,9 +552,13 @@ export const Clients: React.FC = () => {
       formData.append('serviceStartDate', addFormData.serviceStartDate);
       formData.append('monthlyRate', addFormData.monthlyRate.toString());
       formData.append('gracePeriod', addFormData.gracePeriod.toString());
-
-      if (addFormData.clientType === 'commercial') {
-        formData.append('numberOfUnits', addFormData.numberOfUnits.toString());
+      formData.append('numberOfUnits', addFormData.numberOfUnits.toString());
+      formData.append('pickUpDay', addFormData.pickUpDay);
+      formData.append('isActive', 'true');
+      
+      console.log('FormData being sent:');
+      for (let [key, value] of formData.entries()) {
+        console.log(key, value);
       }
 
       if (documentsFiles) {
@@ -573,14 +582,24 @@ export const Clients: React.FC = () => {
         clientType: 'residential',
         serviceStartDate: '',
         gracePeriod: 5,
+        pickUpDay: 'wednesday',
       });
       setDocumentsFiles(null);
       await fetchClients();
 
       setSuccessMessage('Client added successfully!');
       setShowSuccessSnackbar(true);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to create client:', error);
+      let message = error.response?.data?.message || error.message || 'Failed to create client';
+      
+      // Handle specific error cases - 500 error usually means duplicate email/phone
+      if (error.response?.status === 500) {
+        message = 'A user with this email or phone number already exists. Please use different contact details.';
+      }
+      
+      setErrorMessage(message);
+      setShowErrorSnackbar(true);
     } finally {
       setAddingClient(false);
     }
@@ -879,7 +898,7 @@ export const Clients: React.FC = () => {
         </DialogTitle>
 
         <form onSubmit={handleAdd}>
-          <DialogContent sx={{ p: 4, bgcolor: 'grey.50', maxHeight: '70vh', overflowY: 'auto' }}>
+          <DialogContent sx={{ p: 4, bgcolor: 'grey.50', maxHeight: '60vh', overflowY: 'auto' }}>
             <Typography variant="h6" sx={{ mb: 3, color: 'text.primary', fontWeight: 600 }}>
               Client Information
             </Typography>
@@ -953,7 +972,12 @@ export const Clients: React.FC = () => {
                       label="Service Start Date"
                       type="date"
                       value={addFormData.serviceStartDate}
-                      onChange={(e) => setAddFormData({ ...addFormData, serviceStartDate: e.target.value })}
+                      onChange={(e) => {
+                        const date = new Date(e.target.value);
+                        const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+                        const pickUpDay = days[date.getDay()];
+                        setAddFormData({ ...addFormData, serviceStartDate: e.target.value, pickUpDay });
+                      }}
                       InputLabelProps={{ shrink: true }}
                       required
                       variant="outlined"
@@ -1110,6 +1134,24 @@ export const Clients: React.FC = () => {
                       variant="outlined"
                       helperText="Days after due date before penalties apply"
                     />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <FormControl fullWidth required variant="outlined">
+                      <InputLabel>Pickup Day</InputLabel>
+                      <Select
+                        value={addFormData.pickUpDay}
+                        label="Pickup Day"
+                        onChange={(e) => setAddFormData({ ...addFormData, pickUpDay: e.target.value })}
+                      >
+                        <MenuItem value="monday">Monday</MenuItem>
+                        <MenuItem value="tuesday">Tuesday</MenuItem>
+                        <MenuItem value="wednesday">Wednesday</MenuItem>
+                        <MenuItem value="thursday">Thursday</MenuItem>
+                        <MenuItem value="friday">Friday</MenuItem>
+                        <MenuItem value="saturday">Saturday</MenuItem>
+                        <MenuItem value="sunday">Sunday</MenuItem>
+                      </Select>
+                    </FormControl>
                   </Grid>
                 </Grid>
               </CardContent>
@@ -1268,6 +1310,36 @@ export const Clients: React.FC = () => {
                   value={editFormData.address}
                   onChange={(e) => setEditFormData({ ...editFormData, address: e.target.value })}
                   required
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <FormControl fullWidth required variant="outlined">
+                  <InputLabel>Pickup Day</InputLabel>
+                  <Select
+                    value={editFormData.pickUpDay}
+                    label="Pickup Day"
+                    onChange={(e) => setEditFormData({ ...editFormData, pickUpDay: e.target.value })}
+                  >
+                    <MenuItem value="monday">Monday</MenuItem>
+                    <MenuItem value="tuesday">Tuesday</MenuItem>
+                    <MenuItem value="wednesday">Wednesday</MenuItem>
+                    <MenuItem value="thursday">Thursday</MenuItem>
+                    <MenuItem value="friday">Friday</MenuItem>
+                    <MenuItem value="saturday">Saturday</MenuItem>
+                    <MenuItem value="sunday">Sunday</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="Monthly Rate (KSH)"
+                  type="number"
+                  value={editFormData.monthlyRate}
+                  onChange={(e) => setEditFormData({ ...editFormData, monthlyRate: parseFloat(e.target.value) || 0 })}
+                  required
+                  inputProps={{ min: 0 }}
+                  variant="outlined"
                 />
               </Grid>
 
@@ -1515,15 +1587,54 @@ export const Clients: React.FC = () => {
                       </CardContent>
                     </Card>
                   </Grid>
-                  <Grid container xs={12} md={6}>
+                  <Grid item xs={12} md={6}>
+                    <Card variant="outlined">
+                      <CardContent>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                          <CalendarIcon color="primary" />
+                          <Typography variant="h6">Pickup Day</Typography>
+                        </Box>
+                        <Typography variant="body2" sx={{ textTransform: 'capitalize' }}>
+                          {selectedClient.pickUpDay || 'Wednesday'}
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <Card variant="outlined">
+                      <CardContent>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                          <LocationIcon color="primary" />
+                          <Typography variant="h6">Route</Typography>
+                        </Box>
+                        <Typography variant="body2">
+                          {selectedClient.route?.name ? `${selectedClient.route.name} - ${selectedClient.route.path}` : selectedClient.routeId || 'N/A'}
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
                     <Card variant="outlined">
                       <CardContent>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
                           <PersonIcon color="primary" />
-                          <Typography variant="h6">Client ID</Typography>
+                          <Typography variant="h6">Client Type</Typography>
                         </Box>
-                        <Typography variant="body2" sx={{ fontFamily: 'monospace', bgcolor: 'grey.100', p: 1, borderRadius: 1 }}>
-                          {selectedClient.id}
+                        <Typography variant="body2" sx={{ textTransform: 'capitalize' }}>
+                          {selectedClient.clientType || 'Residential'}
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <Card variant="outlined">
+                      <CardContent>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                          <TodayIcon color="primary" />
+                          <Typography variant="h6">Grace Period</Typography>
+                        </Box>
+                        <Typography variant="body2">
+                          {selectedClient.gracePeriod || 5} days
                         </Typography>
                       </CardContent>
                     </Card>
@@ -2368,6 +2479,22 @@ export const Clients: React.FC = () => {
           variant="filled"
         >
           {successMessage}
+        </Alert>
+      </Snackbar>
+
+      {/* Error Snackbar */}
+      <Snackbar
+        open={showErrorSnackbar}
+        autoHideDuration={8000}
+        onClose={() => setShowErrorSnackbar(false)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert
+          onClose={() => setShowErrorSnackbar(false)}
+          severity="error"
+          variant="filled"
+        >
+          {errorMessage}
         </Alert>
       </Snackbar>
     </Box>

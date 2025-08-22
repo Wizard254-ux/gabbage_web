@@ -33,7 +33,6 @@ export const OrganizationManagement: React.FC<OrganizationManagementProps> = ({
   const [formData, setFormData] = useState({
     name: "",
     email: "",
-    password: "",
     phone: "",
     address: "",
     role: "organization",
@@ -45,6 +44,7 @@ export const OrganizationManagement: React.FC<OrganizationManagementProps> = ({
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showDeactivateModal, setShowDeactivateModal] = useState(false);
   const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null);
   const [editFormData, setEditFormData] = useState({
     name: '',
@@ -55,6 +55,8 @@ export const OrganizationManagement: React.FC<OrganizationManagementProps> = ({
   const [successMessage, setSuccessMessage] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isDeactivating, setIsDeactivating] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
 
   useEffect(() => {
     fetchOrganizations();
@@ -78,10 +80,14 @@ export const OrganizationManagement: React.FC<OrganizationManagementProps> = ({
         sortBy: "createdAt",
         sortOrder: "desc"
       };
+      console.log('Fetching organizations with request:', requestBody);
       const response = await adminService.listOrganizations(requestBody);
+      console.log('Organizations response:', response.data);
       setOrganizations(response.data.organizations || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to fetch organizations:", error);
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to fetch organizations';
+      alert(`Error fetching organizations: ${errorMessage}`);
     } finally {
       setLoading(false);
     }
@@ -160,8 +166,7 @@ export const OrganizationManagement: React.FC<OrganizationManagementProps> = ({
     setOpenDropdown(null);
   };
 
-  const handleUpdateOrganization = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleUpdateOrganization = async () => {
     if (!selectedOrg || isUpdating) return;
 
     setIsUpdating(true);
@@ -177,14 +182,19 @@ export const OrganizationManagement: React.FC<OrganizationManagementProps> = ({
         return;
       }
 
-      await adminService.updateOrganization(selectedOrg.id, changedData);
+      console.log('Updating organization:', selectedOrg.id, 'with data:', changedData);
+      const response = await adminService.updateOrganization(selectedOrg.id, changedData);
+      console.log('Update response:', response);
+      
       setShowEditModal(false);
       setSelectedOrg(null);
       setSuccessMessage('Organization updated successfully!');
       setTimeout(() => setSuccessMessage(''), 3000);
       fetchOrganizations();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to update organization:", error);
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to update organization';
+      alert(`Error: ${errorMessage}`);
     } finally {
       setIsUpdating(false);
     }
@@ -192,23 +202,60 @@ export const OrganizationManagement: React.FC<OrganizationManagementProps> = ({
 
   const handleDeleteClick = (org: Organization) => {
     setSelectedOrg(org);
+    setDeleteConfirmText('');
     setShowDeleteModal(true);
     setOpenDropdown(null);
   };
 
+  const handleDeactivateClick = (org: Organization) => {
+    setSelectedOrg(org);
+    setShowDeactivateModal(true);
+    setOpenDropdown(null);
+  };
+
+  const handleDeactivateConfirm = async () => {
+    if (!selectedOrg || isDeactivating) return;
+
+    setIsDeactivating(true);
+    const newStatus = !selectedOrg.isActive;
+    try {
+      console.log(`${newStatus ? 'Activating' : 'Deactivating'} organization:`, selectedOrg.id);
+      const response = await adminService.updateOrganization(selectedOrg.id, { isActive: newStatus });
+      console.log('Deactivate/Activate response:', response);
+      
+      setShowDeactivateModal(false);
+      setSelectedOrg(null);
+      setSuccessMessage(`Organization ${newStatus ? 'activated' : 'deactivated'} successfully!`);
+      setTimeout(() => setSuccessMessage(''), 3000);
+      fetchOrganizations();
+    } catch (error: any) {
+      console.error(`Failed to ${newStatus ? 'activate' : 'deactivate'} organization:`, error);
+      const errorMessage = error.response?.data?.message || error.message || `Failed to ${newStatus ? 'activate' : 'deactivate'} organization`;
+      alert(`Error: ${errorMessage}`);
+    } finally {
+      setIsDeactivating(false);
+    }
+  };
+
   const handleDeleteConfirm = async () => {
-    if (!selectedOrg || isDeleting) return;
+    if (!selectedOrg || isDeleting || deleteConfirmText !== 'delete') return;
 
     setIsDeleting(true);
     try {
-      await adminService.deleteOrganization(selectedOrg.id);
+      console.log('Deleting organization:', selectedOrg.id);
+      const response = await adminService.deleteOrganization(selectedOrg.id);
+      console.log('Delete response:', response);
+      
       setShowDeleteModal(false);
       setSelectedOrg(null);
+      setDeleteConfirmText('');
       setSuccessMessage('Organization deleted successfully!');
       setTimeout(() => setSuccessMessage(''), 3000);
       fetchOrganizations();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to delete organization:", error);
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to delete organization';
+      alert(`Error: ${errorMessage}`);
     } finally {
       setIsDeleting(false);
     }
@@ -303,7 +350,7 @@ export const OrganizationManagement: React.FC<OrganizationManagementProps> = ({
                     type="button"
                     onClick={() => {
                       setShowAddForm(false);
-                      setFormData({ name: "", email: "", password: "", phone: "", address: "", role: "organization" });
+                      setFormData({ name: "", email: "", phone: "", address: "", role: "organization" });
                       setDocuments([]);
                       setDocumentPreviews([]);
                     }}
@@ -346,37 +393,7 @@ export const OrganizationManagement: React.FC<OrganizationManagementProps> = ({
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Password *
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={showPassword ? "text" : "password"}
-                        placeholder="Create a secure password"
-                        value={formData.password}
-                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                        className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
-                        required
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                      >
-                        {showPassword ? (
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
-                          </svg>
-                        ) : (
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                          </svg>
-                        )}
-                      </button>
-                    </div>
-                  </div>
+
 
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -476,7 +493,7 @@ export const OrganizationManagement: React.FC<OrganizationManagementProps> = ({
                     type="button"
                     onClick={() => {
                       setShowAddForm(false);
-                      setFormData({ name: "", email: "", password: "", phone: "", address: "", role: "organization" });
+                      setFormData({ name: "", email: "", phone: "", address: "", role: "organization" });
                       setDocuments([]);
                       setDocumentPreviews([]);
                     }}
@@ -489,7 +506,7 @@ export const OrganizationManagement: React.FC<OrganizationManagementProps> = ({
                     type="submit"
                     className="flex-1 px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl transition-colors shadow-lg hover:shadow-xl"
                   >
-                    {creating ? "Creating ...": "Create Organization"}
+                    {creating ? "Creating & Sending Credentials...": "Create & Send Credentials"}
                   </button>
                 </div>
               </form>
@@ -580,6 +597,15 @@ export const OrganizationManagement: React.FC<OrganizationManagementProps> = ({
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                               </svg>
                               Edit
+                            </button>
+                            <button
+                              onClick={() => handleDeactivateClick(org)}
+                              className="flex items-center px-4 py-2 text-sm text-orange-600 hover:bg-orange-50 w-full text-left"
+                            >
+                              <svg className="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636M5.636 18.364l12.728-12.728" />
+                              </svg>
+                              {org.isActive ? 'Deactivate' : 'Activate'}
                             </button>
                             <button
                               onClick={() => handleDeleteClick(org)}
@@ -714,7 +740,7 @@ export const OrganizationManagement: React.FC<OrganizationManagementProps> = ({
                   </button>
                 </div>
               </div>
-              <form onSubmit={handleUpdateOrganization} className="px-8 py-8 space-y-6">
+              <form onSubmit={(e) => { e.preventDefault(); handleUpdateOrganization(); }} className="px-8 py-8 space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide">Organization Name *</label>
@@ -765,7 +791,8 @@ export const OrganizationManagement: React.FC<OrganizationManagementProps> = ({
                   <button
                     type="button"
                     onClick={() => setShowEditModal(false)}
-                    className="flex-1 px-8 py-4 border-2 border-gray-300 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-all"
+                    disabled={isUpdating}
+                    className="flex-1 px-8 py-4 border-2 border-gray-300 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Cancel
                   </button>
@@ -778,6 +805,49 @@ export const OrganizationManagement: React.FC<OrganizationManagementProps> = ({
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* Deactivate Confirmation Modal */}
+        {showDeactivateModal && selectedOrg && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl border">
+              <div className="bg-gradient-to-r from-orange-50 to-yellow-50 border-b px-8 py-6 rounded-t-3xl">
+                <div className="flex items-center space-x-4">
+                  <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
+                    <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900">{selectedOrg.isActive ? 'Deactivate' : 'Activate'} Organization</h3>
+                    <p className="text-gray-600">Change organization status</p>
+                  </div>
+                </div>
+              </div>
+              <div className="px-8 py-6">
+                <p className="text-gray-700 mb-6">
+                  Are you sure you want to {selectedOrg.isActive ? 'deactivate' : 'activate'} <span className="font-bold text-gray-900">{selectedOrg.name}</span>?
+                  {selectedOrg.isActive ? ' This will prevent the organization from accessing the system.' : ' This will restore the organization\'s access to the system.'}
+                </p>
+                <div className="flex gap-4">
+                  <button
+                    onClick={() => setShowDeactivateModal(false)}
+                    disabled={isDeactivating}
+                    className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleDeactivateConfirm}
+                    disabled={isDeactivating}
+                    className={`flex-1 px-6 py-3 ${selectedOrg.isActive ? 'bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800' : 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800'} text-white font-bold rounded-xl transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed`}
+                  >
+                    {isDeactivating ? (selectedOrg.isActive ? 'Deactivating...' : 'Activating...') : (selectedOrg.isActive ? 'Deactivate Organization' : 'Activate Organization')}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -800,20 +870,36 @@ export const OrganizationManagement: React.FC<OrganizationManagementProps> = ({
                 </div>
               </div>
               <div className="px-8 py-6">
-                <p className="text-gray-700 mb-6">
+                <p className="text-gray-700 mb-4">
                   Are you sure you want to delete <span className="font-bold text-gray-900">{selectedOrg.name}</span>?
                   This will permanently remove the organization and all associated data.
                 </p>
+                <div className="mb-6">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Type <span className="text-red-600 font-bold">delete</span> to confirm:
+                  </label>
+                  <input
+                    type="text"
+                    value={deleteConfirmText}
+                    onChange={(e) => setDeleteConfirmText(e.target.value)}
+                    placeholder="Type 'delete' to confirm"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
+                  />
+                </div>
                 <div className="flex gap-4">
                   <button
-                    onClick={() => setShowDeleteModal(false)}
-                    className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-all"
+                    onClick={() => {
+                      setShowDeleteModal(false);
+                      setDeleteConfirmText('');
+                    }}
+                    disabled={isDeleting}
+                    className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleDeleteConfirm}
-                    disabled={isDeleting}
+                    disabled={isDeleting || deleteConfirmText !== 'delete'}
                     className="flex-1 px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-bold rounded-xl transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isDeleting ? 'Deleting...' : 'Delete Organization'}

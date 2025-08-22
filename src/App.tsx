@@ -1,7 +1,7 @@
 import React from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Login } from './AdminApp/components/Login';
-import { OrganizationManagement } from './AdminApp/components/OrganizationManagement';
+import { AdminApp } from './AdminApp/AdminApp';
 import { OrganizationApp } from './OrganizationApp/OrganizationApp';
 
 const AppContent: React.FC = () => {
@@ -14,7 +14,7 @@ const AppContent: React.FC = () => {
   // Route based on user role
   switch (admin?.user.role) {
     case 'admin':
-      return <OrganizationManagement onLogout={logout} />;
+      return <AdminApp onLogout={logout} />;
     case 'organization':
       return <OrganizationApp onLogout={logout} />;
     default:

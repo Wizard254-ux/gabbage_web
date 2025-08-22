@@ -63,7 +63,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-4">
       {/* Greeting */}
       <div className="mb-8">
         <h2 className="text-3xl font-bold text-gray-900">

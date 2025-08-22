@@ -32,16 +32,45 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [admin, setAdmin] = useState<AdminData | null>(null);
 
+  const checkTokenValidity = (token: string): boolean => {
+    if (!token) return false;
+    
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const currentTime = Date.now() / 1000;
+      return payload.exp > currentTime;
+    } catch {
+      return false;
+    }
+  };
+
   useEffect(() => {
     const storedAdmin = localStorage.getItem('admin');
     if (storedAdmin) {
       try {
-        setAdmin(JSON.parse(storedAdmin));
+        const adminData = JSON.parse(storedAdmin);
+        if (adminData.token && checkTokenValidity(adminData.token)) {
+          setAdmin(adminData);
+        } else {
+          localStorage.removeItem('admin');
+        }
       } catch (error) {
         localStorage.removeItem('admin');
       }
     }
   }, []);
+
+  useEffect(() => {
+    if (admin?.token) {
+      const checkInterval = setInterval(() => {
+        if (!checkTokenValidity(admin.token)) {
+          logout();
+        }
+      }, 60000); // Check every minute
+
+      return () => clearInterval(checkInterval);
+    }
+  }, [admin?.token]);
 
   const login = (adminData: AdminData) => {
     setAdmin(adminData);
