@@ -42,12 +42,12 @@ export const Navbar: React.FC<NavbarProps> = ({ onLogout, setIsMobileMenuOpen })
           <div className="flex items-center space-x-3">
             {/*<div className="w-10 h-10 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center shadow-md">*/}
             {/*  <span className="text-white font-semibold text-sm">*/}
-            {/*    {admin?.user.name.charAt(0).toUpperCase()}*/}
+            {/*    {admin?.data?.user?.name?.charAt(0).toUpperCase()}*/}
             {/*  </span>*/}
             {/*</div>*/}
             <div className="hidden md:block">
-              <p className="text-sm font-medium text-gray-900">{admin?.user.name}</p>
-              <p className="text-xs text-gray-500 truncate max-w-[150px]">{admin?.user.email}</p>
+              <p className="text-sm font-medium text-gray-900">{admin?.data?.user?.name}</p>
+              <p className="text-xs text-gray-500 truncate max-w-[150px]">{admin?.data?.user?.email}</p>
             </div>
           </div>
           

@@ -1,0 +1,790 @@
+{
+	"info": {
+		"_postman_id": "056968e2-e748-48bf-9932-3ab24c1a534c",
+		"name": "Organization App - Complete API Collection",
+		"description": "Complete API collection for Organization App with all endpoints for managing clients, drivers, routes, payments, invoices, and bags",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "45815157",
+		"_collection_link": "https://warped-eclipse-751625.postman.co/workspace/GarbageSystem~6f977304-9758-4350-bbbf-5910cd57f60e/collection/45815157-056968e2-e748-48bf-9932-3ab24c1a534c?action=share&source=collection_link&creator=45815157"
+	},
+	"item": [
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Organization Login",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"wilsonndambuki47@gmail.com\",\n  \"password\": \"gOe63owvt0pX\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "Success Response",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"email\": \"wilsonndambuki47@gmail.com\",\n  \"password\": \"gOe63owvt0pX\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/auth/login",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"auth",
+										"login"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "Text",
+							"header": [],
+							"cookie": [],
+							"body": "{\n  \"status\": true,\n  \"message\": \"Login Successfully\",\n  \"data\": {\n    \"access_token\": \"1|abcd1234token\",\n    \"token_type\": \"Bearer\",\n    \"user\": {\n      \"id\": 7,\n      \"name\": \"Green Waste Solutions\",\n      \"email\": \"org@example.com\",\n      \"role\": \"organization\",\n      \"phone\": \"0113765336\",\n      \"adress\": \"123 Main St\",\n      \"documents\": [],\n      \"created_at\": \"2025-08-24T07:39:37.000000Z\"\n    }\n  }\n}"
+						}
+					]
+				},
+				{
+					"name": "Get Current User",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{org_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/auth/user",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"user"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Logout",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{org_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/auth/logout",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"logout"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Dashboard & Stats",
+			"item": [
+				{
+					"name": "Get Dashboard Stats",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{org_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/organization/dashboard/stats",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"organization",
+								"dashboard",
+								"stats"
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "Success Response",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{org_token}}"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/organization/dashboard/stats",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"organization",
+										"dashboard",
+										"stats"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "Text",
+							"header": [],
+							"cookie": [],
+							"body": "{\n  \"status\": true,\n  \"data\": {\n    \"totalDrivers\": 5,\n    \"totalClients\": 25,\n    \"totalRoutes\": 3,\n    \"activeDrivers\": 4,\n    \"activeClients\": 22\n  }\n}"
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Drivers Management",
+			"item": [
+				{
+					"name": "List Drivers",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{org_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/organization/drivers",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"organization",
+								"drivers"
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "Success Response",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{org_token}}"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/organization/drivers",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"organization",
+										"drivers"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "Text",
+							"header": [],
+							"cookie": [],
+							"body": "{\n  \"status\": true,\n  \"data\": {\n    \"users\": [\n      {\n        \"id\": \"driver_123\",\n        \"name\": \"John Driver\",\n        \"email\": \"john@example.com\",\n        \"phone\": \"+1-555-0123\",\n        \"isActive\": true,\n        \"createdAt\": \"2025-01-01T00:00:00.000Z\",\n        \"isSent\": true\n      }\n    ]\n  }\n}"
+						}
+					]
+				},
+				{
+					"name": "Create Driver",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{org_token}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "name",
+									"value": "New Driver",
+									"type": "text"
+								},
+								{
+									"key": "email",
+									"value": "driver5@example.com",
+									"type": "text"
+								},
+								{
+									"key": "phone",
+									"value": "+1-555-0123",
+									"type": "text"
+								},
+								{
+									"key": "role",
+									"value": "driver",
+									"type": "text"
+								},
+								{
+									"key": "documents",
+									"type": "file",
+									"src": "/C:/Users/HP/Documents/Brian_Albert_Ndesa_CV.docx"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/organization/drivers",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"organization",
+								"drivers"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Driver Details",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{org_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/organization/drivers/{{driver_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"organization",
+								"drivers",
+								"{{driver_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Driver",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{org_token}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "name",
+									"value": "Updated Driver Name",
+									"type": "text"
+								},
+								{
+									"key": "email",
+									"value": "updated@example.com",
+									"type": "text"
+								},
+								{
+									"key": "phone",
+									"value": "+1-555-9999",
+									"type": "text"
+								},
+								{
+									"key": "isActive",
+									"value": "true",
+									"type": "text"
+								},
+								{
+									"key": "documents",
+									"type": "file",
+									"src": "/C:/Users/HP/Downloads/Borehole_Permit_NWRA-2025-34730392.pdf"
+								},
+								{
+									"key": "_method",
+									"value": "update",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/organization/drivers/{{driver_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"organization",
+								"drivers",
+								"{{driver_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Driver",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{org_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/organization/drivers/{{driver_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"organization",
+								"drivers",
+								"{{driver_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Send Driver Credentials",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{org_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"driverId\": \"driver_123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/organization/drivers/{{driver_id}}/send-credentials",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"organization",
+								"drivers",
+								"{{driver_id}}",
+								"send-credentials"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Driver Document",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{org_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"documentPath\": \"http://localhost:8000/api/storage/documents/filename.pdf\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/organization/drivers/{{driver_id}}/documents",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"organization",
+								"drivers",
+								"{{driver_id}}",
+								"documents"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Clients Management",
+			"item": [
+				{
+					"name": "List Clients",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{org_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/organization/clients",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"organization",
+								"clients"
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "Success Response",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{org_token}}"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/organization/clients",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"organization",
+										"clients"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "Text",
+							"header": [],
+							"cookie": [],
+							"body": "{\n  \"status\": true,\n  \"data\": {\n    \"users\": [\n      {\n        \"id\": \"client_123\",\n        \"name\": \"John Client\",\n        \"email\": \"client@example.com\",\n        \"phone\": \"+1-555-0123\",\n        \"address\": \"123 Main St\",\n        \"accountNumber\": \"ACC001\",\n        \"monthlyRate\": 2500,\n        \"clientType\": \"residential\",\n        \"numberOfUnits\": 1,\n        \"pickUpDay\": \"wednesday\",\n        \"isActive\": true\n      }\n    ]\n  }\n}"
+						}
+					]
+				},
+				{
+					"name": "Create Client",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{org_token}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "name",
+									"value": "New Client",
+									"type": "text"
+								},
+								{
+									"key": "email",
+									"value": "client@example.com",
+									"type": "text"
+								},
+								{
+									"key": "phone",
+									"value": "+1-555-0123",
+									"type": "text"
+								},
+								{
+									"key": "address",
+									"value": "123 Main Street",
+									"type": "text"
+								},
+								{
+									"key": "role",
+									"value": "client",
+									"type": "text"
+								},
+								{
+									"key": "route",
+									"value": "2",
+									"type": "text"
+								},
+								{
+									"key": "clientType",
+									"value": "residential",
+									"type": "text"
+								},
+								{
+									"key": "monthlyRate",
+									"value": "2500",
+									"type": "text"
+								},
+								{
+									"key": "numberOfUnits",
+									"value": "1",
+									"type": "text"
+								},
+								{
+									"key": "pickUpDay",
+									"value": "wednesday",
+									"type": "text"
+								},
+								{
+									"key": "gracePeriod",
+									"value": "5",
+									"type": "text"
+								},
+								{
+									"key": "serviceStartDate",
+									"value": "2025-01-01",
+									"type": "text"
+								},
+								{
+									"key": "documents",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/organization/clients",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"organization",
+								"clients"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Client Details",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{org_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/organization/clients/{{client_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"organization",
+								"clients",
+								"{{client_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Client",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{org_token}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "name",
+									"value": "Updated Client Name",
+									"type": "text"
+								},
+								{
+									"key": "email",
+									"value": "updated@example.com",
+									"type": "text"
+								},
+								{
+									"key": "phone",
+									"value": "+1-555-9999",
+									"type": "text"
+								},
+								{
+									"key": "address",
+									"value": "456 New Street",
+									"type": "text"
+								},
+								{
+									"key": "monthlyRate",
+									"value": "3000",
+									"type": "text"
+								},
+								{
+									"key": "isActive",
+									"value": "true",
+									"type": "text"
+								},
+								{
+									"key": "documents",
+									"type": "file",
+									"src": "/C:/Users/HP/Documents/Brian_Albert_Ndesa_CV.docx"
+								},
+								{
+									"key": "_method",
+									"value": "put",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/organization/clients/{{client_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"organization",
+								"clients",
+								"{{client_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Client",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{org_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/organization/clients/{{client_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"organization",
+								"clients",
+								"{{client_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Client Document",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{org_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"documentPath\": \"http://localhost:8000/api/storage/documents/filename.pdf\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/organization/clients/{{client_id}}/documents",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"organization",
+								"clients",
+								"{{client_id}}",
+								"documents"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{org_token}}",
+				"type": "string"
+			}
+		]
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8000/api",
+			"type": "string"
+		},
+		{
+			"key": "org_token",
+			"value": "",
+			"type": "string"
+		}
+	]
+}

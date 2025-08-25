@@ -22,6 +22,7 @@ export const Login: React.FC = () => {
 
       const response = await axios.post('/auth/login', { email, password });
       login(response.data);
+      console.log('Login successful',response.data);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Login failed');
     } finally {

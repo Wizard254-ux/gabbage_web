@@ -70,22 +70,31 @@ import {
 import { organizationService } from '../../services/organizationService';
 
 interface Client {
-  _id: string;
+  id: number;
   name: string;
   email: string;
   phone: string;
   address: string;
-  route: string;
+  route?: {
+    id: number;
+    name: string;
+    path: string;
+    description: string;
+    isActive: boolean;
+    organization_id: number;
+    created_at: string;
+    updated_at: string;
+  };
   routeId?: string;
   pickUpDay: string;
-  isActive: boolean;
-  monthlyRate: number;
+  isActive: number;
+  monthlyRate: string;
   clientType: 'residential' | 'commercial';
-  numberOfUnits?: number;
-  id?: string;
+  numberOfUnits: number;
   accountNumber: string;
-  gracePeriod?: number;
-  documents?: string[];
+  gracePeriod: number;
+  serviceStartDate: string;
+  documents: string[];
 }
 
 interface TabPanelProps {
@@ -155,8 +164,9 @@ export const Clients: React.FC = () => {
         selectedClient.id,
         { page: paymentPage, limit: 10 }
       );
-      setClientPayments(response.data.payments || []);
-      setPaymentPagination(response.data.pagination || null);
+      console.log('Client payments response:', response.data);
+      setClientPayments(response.data.data.payments || []);
+      // setPaymentPagination(response.data.data.pagination || null);
     } catch (error) {
       console.error('Failed to fetch client payments:', error);
       setClientPayments([]);
@@ -289,9 +299,10 @@ export const Clients: React.FC = () => {
   const fetchClients = async () => {
     try {
       const response = await organizationService.listClients();
-      setClients(response.data.users || []);
+      setClients(response.data.data?.users || []);
     } catch (error) {
       console.error('Failed to fetch clients:', error);
+      setClients([]);
     } finally {
       setLoading(false);
     }
@@ -300,10 +311,10 @@ export const Clients: React.FC = () => {
   const fetchRoutes = async () => {
     try {
       const response = await organizationService.getAllRoutes();
-      // console.l
-      setRoutes(response.data.data || []);
+      setRoutes(response.data?.data?.data || []);
     } catch (error) {
       console.error('Failed to fetch routes:', error);
+      setRoutes([]);
     }
   };
 
@@ -606,10 +617,10 @@ export const Clients: React.FC = () => {
   };
 
   const filteredClients = clients.filter(client =>
-    client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    client.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    client.phone.includes(searchTerm) ||
-    client.address.toLowerCase().includes(searchTerm.toLowerCase())
+    client.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    client.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    client.phone?.includes(searchTerm) ||
+    client.address?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const getInitials = (name: string) => {
@@ -693,11 +704,11 @@ export const Clients: React.FC = () => {
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Box sx={{ width: 12, height: 12, bgcolor: '#4CAF50', borderRadius: '50%' }} />
-                  <Typography variant="body2">Active: {clients.filter(c => c.isActive).length}</Typography>
+                  <Typography variant="body2">Active: {clients.filter(c => c.isActive === 1).length}</Typography>
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Box sx={{ width: 12, height: 12, bgcolor: '#F44336', borderRadius: '50%' }} />
-                  <Typography variant="body2">Inactive: {clients.filter(c => !c.isActive).length}</Typography>
+                  <Typography variant="body2">Inactive: {clients.filter(c => c.isActive === 0).length}</Typography>
                 </Box>
               </Box>
             </Grid>
@@ -788,20 +799,20 @@ export const Clients: React.FC = () => {
 
                 <TableCell>
                   <Typography variant="body2" fontWeight="medium" color="primary.main">
-                    KSH {client.monthlyRate?.toLocaleString() || 'N/A'}
+                    KSH {parseFloat(client.monthlyRate || '0').toLocaleString()}
                   </Typography>
                 </TableCell>
 
                 <TableCell>
                   <Typography variant="body2" fontWeight="medium" color="success.main">
-                    KSH {((client.monthlyRate || 0) * (client.numberOfUnits || 1)).toLocaleString()}
+                    KSH {(parseFloat(client.monthlyRate || '0') * (client.numberOfUnits || 1)).toLocaleString()}
                   </Typography>
                 </TableCell>
 
                 <TableCell>
                   <Chip
-                    label={client.isActive ? 'Active' : 'Inactive'}
-                    color={client.isActive ? 'success' : 'error'}
+                    label={client.isActive === 1 ? 'Active' : 'Inactive'}
+                    color={client.isActive === 1 ? 'success' : 'error'}
                     variant="outlined"
                     size="small"
                   />
@@ -1488,7 +1499,12 @@ export const Clients: React.FC = () => {
           </IconButton>
         </DialogTitle>
         <DialogContent>
-          {selectedClient && (
+          {loadingClientDetails ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 8 }}>
+              <CircularProgress size={40} />
+              <Typography sx={{ ml: 2 }}>Loading client details...</Typography>
+            </Box>
+          ) : selectedClient && (
             <Box>
               {/* Client Info Header */}
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 3 }}>
@@ -1507,8 +1523,8 @@ export const Clients: React.FC = () => {
                     {selectedClient.name}
                   </Typography>
                   <Chip
-                    label={selectedClient.isActive ? 'Active' : 'Inactive'}
-                    color={selectedClient.isActive ? 'success' : 'error'}
+                    label={selectedClient.isActive === 1 ? 'Active' : 'Inactive'}
+                    color={selectedClient.isActive === 1 ? 'success' : 'error'}
                     size="small"
                     sx={{ mt: 1 }}
                   />
@@ -1608,7 +1624,23 @@ export const Clients: React.FC = () => {
                           <Typography variant="h6">Route</Typography>
                         </Box>
                         <Typography variant="body2">
-                          {selectedClient.route?.name ? `${selectedClient.route.name} - ${selectedClient.route.path}` : selectedClient.routeId || 'N/A'}
+                          {selectedClient.route?.name ? (
+                            <Box>
+                              <Typography variant="body2" fontWeight="medium">
+                                {selectedClient.route.name}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                {selectedClient.route.path}
+                              </Typography>
+                              {selectedClient.route.active_drivers && selectedClient.route.active_drivers.length > 0 && (
+                                <Typography variant="caption" color="primary.main" display="block">
+                                  Active drivers: {selectedClient.route.active_drivers.map(d => d.name).join(', ')}
+                                </Typography>
+                              )}
+                            </Box>
+                          ) : (
+                            selectedClient.routeId || 'N/A'
+                          )}
                         </Typography>
                       </CardContent>
                     </Card>
