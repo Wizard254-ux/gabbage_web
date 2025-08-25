@@ -1,0 +1,498 @@
+{
+  "info": {
+    "_postman_id": "12345678-1234-1234-1234-123456789012",
+    "name": "GreenLife Admin API Collection",
+    "description": "Complete API collection for GreenLife Admin App backend development",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:5000/api",
+      "type": "string"
+    },
+    {
+      "key": "admin_token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Admin Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@greenlife.com\",\n  \"password\": \"admin123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            }
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"admin@greenlife.com\",\n  \"password\": \"admin123\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/login",
+                  "host": ["{{base_url}}"],
+                  "path": ["auth", "login"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [],
+              "body": "{\n  \"message\": \"Login successful\",\n  \"user\": {\n    \"id\": \"admin_123\",\n    \"name\": \"Admin User\",\n    \"email\": \"admin@greenlife.com\",\n    \"role\": \"admin\",\n    \"documents\": []\n  },\n  \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Admin Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/logout",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "logout"]
+            }
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"message\": \"Logout successful\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Organization Management",
+      "item": [
+        {
+          "name": "List Organizations",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"list\",\n  \"page\": 1,\n  \"limit\": 10,\n  \"search\": \"\",\n  \"isActive\": true,\n  \"sortBy\": \"createdAt\",\n  \"sortOrder\": \"desc\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/organization/manage",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "organization", "manage"]
+            }
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"organizations\": [\n    {\n      \"id\": \"org_123\",\n      \"name\": \"Green Waste Solutions\",\n      \"email\": \"contact@greenwaste.com\",\n      \"phone\": \"+1-555-0123\",\n      \"isActive\": true,\n      \"createdAt\": \"2025-01-01T00:00:00.000Z\",\n      \"updatedAt\": \"2025-01-01T00:00:00.000Z\",\n      \"statistics\": {\n        \"totalDrivers\": 5,\n        \"activeDrivers\": 4,\n        \"totalClients\": 25,\n        \"activeClients\": 22,\n        \"totalUsers\": 30\n      }\n    }\n  ],\n  \"total\": 1,\n  \"page\": 1,\n  \"limit\": 10\n}"
+            }
+          ]
+        },
+        {
+          "name": "Create Organization",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name",
+                  "value": "Green Waste Solutions",
+                  "type": "text"
+                },
+                {
+                  "key": "email",
+                  "value": "contact@greenwaste.com",
+                  "type": "text"
+                },
+                {
+                  "key": "phone",
+                  "value": "+1-555-0123",
+                  "type": "text"
+                },
+                {
+                  "key": "address",
+                  "value": "123 Green Street, Eco City, EC 12345",
+                  "type": "text"
+                },
+                {
+                  "key": "role",
+                  "value": "organization",
+                  "type": "text"
+                },
+                {
+                  "key": "documents",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/register/organization",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "register", "organization"]
+            }
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "Created",
+              "code": 201,
+              "body": "{\n  \"message\": \"Organization created successfully and credentials sent\",\n  \"organization\": {\n    \"id\": \"org_124\",\n    \"name\": \"Green Waste Solutions\",\n    \"email\": \"contact@greenwaste.com\",\n    \"phone\": \"+1-555-0123\",\n    \"address\": \"123 Green Street, Eco City, EC 12345\",\n    \"isActive\": true,\n    \"createdAt\": \"2025-01-01T00:00:00.000Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Organization",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"edit\",\n  \"organizationId\": \"org_123\",\n  \"updateData\": {\n    \"name\": \"Updated Organization Name\",\n    \"email\": \"updated@email.com\",\n    \"phone\": \"+1-555-9999\",\n    \"isActive\": true\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/organization/manage",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "organization", "manage"]
+            }
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"message\": \"Organization updated successfully\",\n  \"organization\": {\n    \"id\": \"org_123\",\n    \"name\": \"Updated Organization Name\",\n    \"email\": \"updated@email.com\",\n    \"phone\": \"+1-555-9999\",\n    \"isActive\": true,\n    \"updatedAt\": \"2025-01-01T12:00:00.000Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Delete Organization",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"delete\",\n  \"organizationId\": \"org_123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/organization/manage",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "organization", "manage"]
+            }
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"message\": \"Organization deleted successfully\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Organization Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/organizations/org_123",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "organizations", "org_123"]
+            }
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"organization\": {\n    \"id\": \"org_123\",\n    \"name\": \"Green Waste Solutions\",\n    \"email\": \"contact@greenwaste.com\",\n    \"phone\": \"+1-555-0123\",\n    \"location\": \"Eco City\",\n    \"isActive\": true,\n    \"isSent\": true,\n    \"createdAt\": \"2025-01-01T00:00:00.000Z\",\n    \"documents\": [\n      \"https://example.com/doc1.pdf\",\n      \"https://example.com/doc2.pdf\"\n    ],\n    \"statistics\": {\n      \"totalDrivers\": 5,\n      \"activeDrivers\": 4,\n      \"totalClients\": 25,\n      \"activeClients\": 22,\n      \"totalUsers\": 30\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Send Organization Credentials",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"organizationId\": \"org_123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/organizations/send-credentials",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "organizations", "send-credentials"]
+            }
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"message\": \"Credentials sent successfully\",\n  \"sentAt\": \"2025-01-01T12:00:00.000Z\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Admin Management",
+      "item": [
+        {
+          "name": "List Admins",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/admins/list",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "admins", "list"]
+            }
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"admins\": [\n    {\n      \"id\": \"admin_123\",\n      \"name\": \"John Admin\",\n      \"email\": \"john@greenlife.com\",\n      \"phone\": \"+1-555-0001\",\n      \"isActive\": true,\n      \"createdAt\": \"2025-01-01T00:00:00.000Z\"\n    },\n    {\n      \"id\": \"admin_124\",\n      \"name\": \"Jane Admin\",\n      \"email\": \"jane@greenlife.com\",\n      \"phone\": \"+1-555-0002\",\n      \"isActive\": true,\n      \"createdAt\": \"2025-01-01T00:00:00.000Z\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Create Admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"New Admin\",\n  \"email\": \"newadmin@greenlife.com\",\n  \"phone\": \"+1-555-0003\",\n  \"password\": \"securePassword123\",\n  \"role\": \"admin\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/admins/create",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "admins", "create"]
+            }
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "Created",
+              "code": 201,
+              "body": "{\n  \"message\": \"Admin created successfully\",\n  \"admin\": {\n    \"id\": \"admin_125\",\n    \"name\": \"New Admin\",\n    \"email\": \"newadmin@greenlife.com\",\n    \"phone\": \"+1-555-0003\",\n    \"role\": \"admin\",\n    \"isActive\": true,\n    \"createdAt\": \"2025-01-01T12:00:00.000Z\"\n  }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Dashboard & Statistics",
+      "item": [
+        {
+          "name": "Get Admin Stats",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/stats",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "stats"]
+            }
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"overallStats\": {\n    \"totalOrganizations\": 15,\n    \"activeOrganizations\": 12,\n    \"totalDrivers\": 75,\n    \"totalClients\": 350\n  },\n  \"recentActivity\": [\n    {\n      \"type\": \"organization_created\",\n      \"message\": \"New organization 'Green Solutions' was created\",\n      \"timestamp\": \"2025-01-01T10:30:00.000Z\"\n    },\n    {\n      \"type\": \"credentials_sent\",\n      \"message\": \"Credentials sent to 'Eco Waste Management'\",\n      \"timestamp\": \"2025-01-01T09:15:00.000Z\"\n    }\n  ]\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Error Responses",
+      "item": [
+        {
+          "name": "Unauthorized Access",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/admin/stats",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "stats"]
+            }
+          },
+          "response": [
+            {
+              "name": "Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "body": "{\n  \"error\": \"Unauthorized\",\n  \"message\": \"Access token is required\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Invalid Credentials",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"wrong@email.com\",\n  \"password\": \"wrongpassword\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            }
+          },
+          "response": [
+            {
+              "name": "Invalid Credentials",
+              "status": "Unauthorized",
+              "code": 401,
+              "body": "{\n  \"error\": \"Invalid credentials\",\n  \"message\": \"Email or password is incorrect\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Validation Error",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"\",\n  \"email\": \"invalid-email\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/admins/create",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "admins", "create"]
+            }
+          },
+          "response": [
+            {
+              "name": "Validation Error",
+              "status": "Bad Request",
+              "code": 400,
+              "body": "{\n  \"error\": \"Validation failed\",\n  \"message\": \"Invalid input data\",\n  \"details\": [\n    {\n      \"field\": \"name\",\n      \"message\": \"Name is required\"\n    },\n    {\n      \"field\": \"email\",\n      \"message\": \"Invalid email format\"\n    }\n  ]\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

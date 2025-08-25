@@ -1,0 +1,268 @@
+{
+	"info": {
+		"_postman_id": "routes-collection-id",
+		"name": "Routes Management API Collection",
+		"description": "API collection for Routes CRUD operations in Organization App",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{org_token}}",
+				"type": "string"
+			}
+		]
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8000/api",
+			"type": "string"
+		},
+		{
+			"key": "org_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "route_id",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "List Routes",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{org_token}}"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/organization/routes",
+					"host": ["{{base_url}}"],
+					"path": ["organization", "routes"]
+				}
+			},
+			"response": [
+				{
+					"name": "Success Response",
+					"status": "OK",
+					"code": 200,
+					"body": "{\n  \"status\": true,\n  \"data\": {\n    \"data\": [\n      {\n        \"id\": 1,\n        \"name\": \"Downtown Route\",\n        \"path\": \"Main St -> Oak Ave -> Pine St -> City Center\",\n        \"description\": \"Main downtown collection route\",\n        \"isActive\": true,\n        \"organization_id\": 7,\n        \"active_driver_id\": null,\n        \"created_at\": \"2025-08-24T08:00:00.000000Z\",\n        \"updated_at\": \"2025-08-24T08:00:00.000000Z\",\n        \"activeDriver\": null\n      }\n    ]\n  }\n}"
+				}
+			]
+		},
+		{
+			"name": "Create Route",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{org_token}}"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"name\": \"Residential Route A\",\n  \"path\": \"Elm St -> Maple Ave -> Oak Dr -> Pine Rd\",\n  \"description\": \"Primary residential collection route covering north side\",\n  \"isActive\": true\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/organization/routes",
+					"host": ["{{base_url}}"],
+					"path": ["organization", "routes"]
+				}
+			},
+			"response": [
+				{
+					"name": "Success Response",
+					"status": "OK",
+					"code": 200,
+					"body": "{\n  \"status\": true,\n  \"message\": \"Route created successfully\",\n  \"data\": {\n    \"route\": {\n      \"id\": 2,\n      \"name\": \"Residential Route A\",\n      \"path\": \"Elm St -> Maple Ave -> Oak Dr -> Pine Rd\",\n      \"description\": \"Primary residential collection route covering north side\",\n      \"isActive\": true,\n      \"organization_id\": 7,\n      \"active_driver_id\": null,\n      \"created_at\": \"2025-08-24T08:30:00.000000Z\",\n      \"updated_at\": \"2025-08-24T08:30:00.000000Z\"\n    }\n  }\n}"
+				},
+				{
+					"name": "Validation Error",
+					"status": "Unauthorized",
+					"code": 401,
+					"body": "{\n  \"status\": false,\n  \"error\": \"Validation failed\",\n  \"message\": \"Invalid input data\",\n  \"details\": [\n    {\n      \"field\": \"name\",\n      \"message\": \"The name field is required.\"\n    },\n    {\n      \"field\": \"path\",\n      \"message\": \"The path field is required.\"\n    }\n  ]\n}"
+				}
+			]
+		},
+		{
+			"name": "Get Route Details",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{org_token}}"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/organization/routes/{{route_id}}",
+					"host": ["{{base_url}}"],
+					"path": ["organization", "routes", "{{route_id}}"]
+				}
+			},
+			"response": [
+				{
+					"name": "Success Response",
+					"status": "OK",
+					"code": 200,
+					"body": "{\n  \"status\": true,\n  \"data\": {\n    \"route\": {\n      \"id\": 1,\n      \"name\": \"Downtown Route\",\n      \"path\": \"Main St -> Oak Ave -> Pine St -> City Center\",\n      \"description\": \"Main downtown collection route\",\n      \"isActive\": true,\n      \"organization_id\": 7,\n      \"active_driver_id\": null,\n      \"created_at\": \"2025-08-24T08:00:00.000000Z\",\n      \"updated_at\": \"2025-08-24T08:00:00.000000Z\",\n      \"activeDriver\": null\n    }\n  }\n}"
+				},
+				{
+					"name": "Route Not Found",
+					"status": "Not Found",
+					"code": 404,
+					"body": "{\n  \"status\": false,\n  \"error\": \"Not found\",\n  \"message\": \"Route not found\"\n}"
+				}
+			]
+		},
+		{
+			"name": "Update Route",
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{org_token}}"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"name\": \"Updated Downtown Route\",\n  \"path\": \"Main St -> Oak Ave -> Pine St -> City Center -> Park Ave\",\n  \"description\": \"Extended downtown collection route with park area\",\n  \"isActive\": true\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/organization/routes/{{route_id}}",
+					"host": ["{{base_url}}"],
+					"path": ["organization", "routes", "{{route_id}}"]
+				}
+			},
+			"response": [
+				{
+					"name": "Success Response",
+					"status": "OK",
+					"code": 200,
+					"body": "{\n  \"status\": true,\n  \"message\": \"Route updated successfully\",\n  \"data\": {\n    \"route\": {\n      \"id\": 1,\n      \"name\": \"Updated Downtown Route\",\n      \"path\": \"Main St -> Oak Ave -> Pine St -> City Center -> Park Ave\",\n      \"description\": \"Extended downtown collection route with park area\",\n      \"isActive\": true,\n      \"organization_id\": 7,\n      \"active_driver_id\": null,\n      \"created_at\": \"2025-08-24T08:00:00.000000Z\",\n      \"updated_at\": \"2025-08-24T09:00:00.000000Z\"\n    }\n  }\n}"
+				}
+			]
+		},
+		{
+			"name": "Delete Route",
+			"request": {
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{org_token}}"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/organization/routes/{{route_id}}",
+					"host": ["{{base_url}}"],
+					"path": ["organization", "routes", "{{route_id}}"]
+				}
+			},
+			"response": [
+				{
+					"name": "Success Response",
+					"status": "OK",
+					"code": 200,
+					"body": "{\n  \"status\": true,\n  \"message\": \"Route deleted successfully\"\n}"
+				}
+			]
+		},
+		{
+			"name": "Deactivate Route",
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{org_token}}"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"isActive\": false\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/organization/routes/{{route_id}}",
+					"host": ["{{base_url}}"],
+					"path": ["organization", "routes", "{{route_id}}"]
+				}
+			},
+			"response": [
+				{
+					"name": "Success Response",
+					"status": "OK",
+					"code": 200,
+					"body": "{\n  \"status\": true,\n  \"message\": \"Route updated successfully\",\n  \"data\": {\n    \"route\": {\n      \"id\": 1,\n      \"name\": \"Downtown Route\",\n      \"path\": \"Main St -> Oak Ave -> Pine St -> City Center\",\n      \"description\": \"Main downtown collection route\",\n      \"isActive\": false,\n      \"organization_id\": 7,\n      \"active_driver_id\": null,\n      \"created_at\": \"2025-08-24T08:00:00.000000Z\",\n      \"updated_at\": \"2025-08-24T09:30:00.000000Z\"\n    }\n  }\n}"
+				}
+			]
+		},
+		{
+			"name": "Unauthorized Access",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/organization/routes",
+					"host": ["{{base_url}}"],
+					"path": ["organization", "routes"]
+				}
+			},
+			"response": [
+				{
+					"name": "Unauthorized",
+					"status": "Unauthorized",
+					"code": 401,
+					"body": "{\n  \"status\": false,\n  \"error\": \"Unauthorized\",\n  \"message\": \"Access token is required\"\n}"
+				}
+			]
+		},
+		{
+			"name": "Organization Only Access",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{admin_token}}"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/organization/routes",
+					"host": ["{{base_url}}"],
+					"path": ["organization", "routes"]
+				}
+			},
+			"response": [
+				{
+					"name": "Forbidden",
+					"status": "Forbidden",
+					"code": 403,
+					"body": "{\n  \"status\": false,\n  \"error\": \"Unauthorized\",\n  \"message\": \"Only organizations can access this resource\"\n}"
+				}
+			]
+		}
+	]
+}

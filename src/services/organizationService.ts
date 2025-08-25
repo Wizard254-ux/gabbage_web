@@ -170,8 +170,77 @@ export const organizationService = {
     return response;
   },
 
-  // Get all routes - disabled
+  // Routes management
   getAllRoutes: async () => {
-    return { data: { data: [] } };
+    const response = await api.get('/organization/routes');
+    return response;
+  },
+
+  createRoute: async (data) => {
+    const response = await api.post('/organization/routes', data);
+    return response;
+  },
+
+  getRouteDetails: async (routeId) => {
+    const response = await api.get(`/organization/routes/${routeId}`);
+    return response;
+  },
+
+  updateRoute: async (routeId, data) => {
+    const response = await api.put(`/organization/routes/${routeId}`, data);
+    return response;
+  },
+
+  deleteRoute: async (routeId) => {
+    const response = await api.delete(`/organization/routes/${routeId}`);
+    return response;
+  },
+
+  // Client management
+  listClients: async () => {
+    const response = await api.get('/organization/clients');
+    return response;
+  },
+
+  createClientWithMultipart: async (formData) => {
+    const response = await api.post('/organization/clients', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response;
+  },
+
+  getClientDetails: async (clientId) => {
+    const response = await api.get(`/organization/clients/${clientId}`);
+    return response;
+  },
+
+  editClient: async (clientId, data) => {
+    const response = await api.put(`/organization/clients/${clientId}`, data);
+    return response;
+  },
+
+  editClientWithDocuments: async (clientId, formData) => {
+    // Use POST with _method=PUT for file uploads
+    formData.append('_method', 'PUT');
+    const response = await api.post(`/organization/clients/${clientId}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response;
+  },
+
+  deleteClient: async (clientId) => {
+    const response = await api.delete(`/organization/clients/${clientId}`);
+    return response;
+  },
+
+  deleteClientDocument: async (clientId, documentPath) => {
+    const response = await api.delete(`/organization/clients/${clientId}/documents`, {
+      data: { documentPath }
+    });
+    return response;
   }
 };
