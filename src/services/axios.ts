@@ -1,10 +1,9 @@
 import axios from "axios";
 
 const api = axios.create({
-   baseURL: "http://localhost:5000/api",
+   baseURL: "http://127.0.0.1:8000/api",
   //baseURL: "https://garbagesystem.onrender.com/api",
-  timeout: 10000,
-  withCredentials: true,
+  timeout: 30000,
   headers: {
     "Content-Type": "application/json",
   },
@@ -16,7 +15,10 @@ api.interceptors.request.use(
     if (admin) {
       try {
         const adminData = JSON.parse(admin);
-        config.headers.Authorization = `Bearer ${adminData.token}`;
+        const token = adminData.data?.access_token;
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
       } catch (error) {
         localStorage.removeItem('admin');
       }
@@ -32,12 +34,6 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem('admin');
       window.location.reload();
-    }
-    
-    // Retry logic for timeout errors
-    if (error.code === 'ECONNABORTED' && !error.config._retry) {
-      error.config._retry = true;
-      return api.request(error.config);
     }
     
     return Promise.reject(error);
@@ -77,3 +73,5 @@ export const adminService = {
       organizationId,
     }),
 };
+
+export default api;

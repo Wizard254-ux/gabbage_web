@@ -12,7 +12,7 @@ const AppContent: React.FC = () => {
   }
 
   // Route based on user role
-  switch (admin?.user.role) {
+  switch (admin?.data?.user?.role) {
     case 'admin':
       return <AdminApp onLogout={logout} />;
     case 'organization':

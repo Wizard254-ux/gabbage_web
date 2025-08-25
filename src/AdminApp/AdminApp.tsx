@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { Box, CssBaseline, ThemeProvider, createTheme } from '@mui/material';
 import { Sidebar } from './components/Sidebar';
-import { Dashboard } from './pages/Dashboard';
-import { Organizations } from './pages/Organizations';
-import { Admins } from './pages/Admins';
-import { Settings } from './pages/Settings';
+import Dashboard from './pages/Dashboard';
+import Organizations from './pages/Organizations';
+import Admins from './pages/Admins';
+// import Settings from './pages/Settings';
 import { IconButton } from '@mui/material';
 import { Menu as MenuIcon } from '@mui/icons-material';
 
@@ -43,7 +43,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({ onLogout }) => {
       case 'admins':
         return <Admins />;
       case 'settings':
-        return <Settings />;
+        return <div className="p-4">Settings page coming soon...</div>;
       default:
         return <Dashboard />;
     }

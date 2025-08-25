@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { adminService } from '../../services/axios';
+import React, { useState, useRef } from 'react';
+import axios from '../../services/axios';
 import { useAuth } from '../../contexts/AuthContext';
 
 export const Login: React.FC = () => {
@@ -8,19 +8,25 @@ export const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const { login } = useAuth();
+  const submittingRef = useRef(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setError('');
-
+    
+    if (submittingRef.current) return;
+    
     try {
-      const response = await adminService.login({ email, password });
+      submittingRef.current = true;
+      setLoading(true);
+      setError('');
+
+      const response = await axios.post('/auth/login', { email, password });
       login(response.data);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Login failed');
     } finally {
       setLoading(false);
+      submittingRef.current = false;
     }
   };
 

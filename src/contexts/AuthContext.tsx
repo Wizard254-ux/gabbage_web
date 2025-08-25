@@ -10,9 +10,13 @@ interface User {
 }
 
 interface AdminData {
+  status: boolean;
   message: string;
-  user: User;
-  token: string;
+  data: {
+    access_token: string;
+    token_type: string;
+    user: User;
+  };
 }
 
 interface AuthContextType {
@@ -35,13 +39,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const checkTokenValidity = (token: string): boolean => {
     if (!token) return false;
     
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      const currentTime = Date.now() / 1000;
-      return payload.exp > currentTime;
-    } catch {
-      return false;
-    }
+    // For Laravel Sanctum tokens, we can't decode them like JWT
+    // Just check if token exists and is not empty
+    return token.length > 0;
   };
 
   useEffect(() => {
@@ -49,7 +49,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (storedAdmin) {
       try {
         const adminData = JSON.parse(storedAdmin);
-        if (adminData.token && checkTokenValidity(adminData.token)) {
+        if (adminData.data?.access_token && checkTokenValidity(adminData.data.access_token)) {
           setAdmin(adminData);
         } else {
           localStorage.removeItem('admin');
@@ -61,16 +61,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   useEffect(() => {
-    if (admin?.token) {
+    if (admin?.data?.access_token) {
       const checkInterval = setInterval(() => {
-        if (!checkTokenValidity(admin.token)) {
+        if (!checkTokenValidity(admin.data.access_token)) {
           logout();
         }
       }, 60000); // Check every minute
 
       return () => clearInterval(checkInterval);
     }
-  }, [admin?.token]);
+  }, [admin?.data?.access_token]);
 
   const login = (adminData: AdminData) => {
     setAdmin(adminData);
@@ -83,7 +83,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const getToken = () => {
-    return admin?.token || null;
+    return admin?.data?.access_token || null;
   };
 
   const value: AuthContextType = {

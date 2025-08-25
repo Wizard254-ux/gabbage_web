@@ -78,7 +78,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onNavigate, onLogou
           <PersonIcon />
         </Avatar>
         <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1 }}>
-          {admin?.user.name}
+          {admin?.data?.user?.name || 'Admin User'}
         </Typography>
         <Typography variant="body2" sx={{ color: 'grey.400' }}>
           Super Admin
