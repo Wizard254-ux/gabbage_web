@@ -1,0 +1,186 @@
+{
+	"info": {
+		"_postman_id": "payments-collection-id",
+		"name": "Payments Management API Collection",
+		"description": "API collection for Payments CRUD operations in Organization App",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{org_token}}",
+				"type": "string"
+			}
+		]
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8000/api",
+			"type": "string"
+		},
+		{
+			"key": "org_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "payment_id",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "List Organization Payments",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{org_token}}"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/organization/payments",
+					"host": ["{{base_url}}"],
+					"path": ["organization", "payments"]
+				}
+			},
+			"response": [
+				{
+					"name": "Success Response",
+					"status": "OK",
+					"code": 200,
+					"body": "{\n  \"status\": true,\n  \"data\": {\n    \"payments\": [\n      {\n        \"id\": 1,\n        \"client_id\": 12,\n        \"amount\": 2500.00,\n        \"payment_method\": \"mpesa\",\n        \"transaction_id\": \"MPX123456789\",\n        \"status\": \"completed\",\n        \"payment_date\": \"2025-08-24T10:30:00.000000Z\",\n        \"created_at\": \"2025-08-24T10:30:00.000000Z\",\n        \"client\": {\n          \"id\": 12,\n          \"name\": \"John Doe\",\n          \"email\": \"john@example.com\",\n          \"accountNumber\": \"ACC000012\"\n        }\n      }\n    ],\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 10\n  }\n}"
+				}
+			]
+		},
+		{
+			"name": "Process Payment",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{org_token}}"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"client_id\": 12,\n  \"amount\": 2500.00,\n  \"payment_method\": \"mpesa\",\n  \"phone_number\": \"+254712345678\",\n  \"description\": \"Monthly garbage collection fee\"\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/organization/payments",
+					"host": ["{{base_url}}"],
+					"path": ["organization", "payments"]
+				}
+			},
+			"response": [
+				{
+					"name": "Success Response",
+					"status": "OK",
+					"code": 200,
+					"body": "{\n  \"status\": true,\n  \"message\": \"Payment initiated successfully\",\n  \"data\": {\n    \"payment\": {\n      \"id\": 1,\n      \"client_id\": 12,\n      \"amount\": 2500.00,\n      \"payment_method\": \"mpesa\",\n      \"status\": \"pending\",\n      \"transaction_id\": \"MPX123456789\",\n      \"created_at\": \"2025-08-24T10:30:00.000000Z\"\n    }\n  }\n}"
+				},
+				{
+					"name": "Validation Error",
+					"status": "Unauthorized",
+					"code": 401,
+					"body": "{\n  \"status\": false,\n  \"error\": \"Validation failed\",\n  \"message\": \"Invalid input data\",\n  \"details\": [\n    {\n      \"field\": \"client_id\",\n      \"message\": \"The client id field is required.\"\n    },\n    {\n      \"field\": \"amount\",\n      \"message\": \"The amount field is required.\"\n    }\n  ]\n}"
+				}
+			]
+		},
+		{
+			"name": "Get Payment Details",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{org_token}}"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/organization/payments/{{payment_id}}",
+					"host": ["{{base_url}}"],
+					"path": ["organization", "payments", "{{payment_id}}"]
+				}
+			},
+			"response": [
+				{
+					"name": "Success Response",
+					"status": "OK",
+					"code": 200,
+					"body": "{\n  \"status\": true,\n  \"data\": {\n    \"payment\": {\n      \"id\": 1,\n      \"client_id\": 12,\n      \"amount\": 2500.00,\n      \"payment_method\": \"mpesa\",\n      \"transaction_id\": \"MPX123456789\",\n      \"status\": \"completed\",\n      \"payment_date\": \"2025-08-24T10:30:00.000000Z\",\n      \"description\": \"Monthly garbage collection fee\",\n      \"created_at\": \"2025-08-24T10:30:00.000000Z\",\n      \"updated_at\": \"2025-08-24T10:35:00.000000Z\",\n      \"client\": {\n        \"id\": 12,\n        \"name\": \"John Doe\",\n        \"email\": \"john@example.com\",\n        \"phone\": \"+254712345678\",\n        \"accountNumber\": \"ACC000012\"\n      }\n    }\n  }\n}"
+				},
+				{
+					"name": "Payment Not Found",
+					"status": "Not Found",
+					"code": 404,
+					"body": "{\n  \"status\": false,\n  \"error\": \"Not found\",\n  \"message\": \"Payment not found\"\n}"
+				}
+			]
+		},
+		{
+			"name": "Get Client Payments",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{org_token}}"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/organization/clients/{{client_id}}/payments",
+					"host": ["{{base_url}}"],
+					"path": ["organization", "clients", "{{client_id}}", "payments"]
+				}
+			},
+			"response": [
+				{
+					"name": "Success Response",
+					"status": "OK",
+					"code": 200,
+					"body": "{\n  \"status\": true,\n  \"data\": {\n    \"payments\": [\n      {\n        \"id\": 1,\n        \"amount\": 2500.00,\n        \"payment_method\": \"mpesa\",\n        \"transaction_id\": \"MPX123456789\",\n        \"status\": \"completed\",\n        \"payment_date\": \"2025-08-24T10:30:00.000000Z\",\n        \"description\": \"Monthly garbage collection fee\"\n      },\n      {\n        \"id\": 2,\n        \"amount\": 2500.00,\n        \"payment_method\": \"cash\",\n        \"status\": \"completed\",\n        \"payment_date\": \"2025-07-24T10:30:00.000000Z\",\n        \"description\": \"Monthly garbage collection fee\"\n      }\n    ]\n  }\n}"
+				}
+			]
+		},
+		{
+			"name": "Payment Status Update (Webhook)",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"transaction_id\": \"MPX123456789\",\n  \"status\": \"completed\",\n  \"amount\": 2500.00,\n  \"phone_number\": \"+254712345678\",\n  \"receipt_number\": \"RCP123456789\"\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/payments/webhook/mpesa",
+					"host": ["{{base_url}}"],
+					"path": ["payments", "webhook", "mpesa"]
+				}
+			},
+			"response": [
+				{
+					"name": "Success Response",
+					"status": "OK",
+					"code": 200,
+					"body": "{\n  \"status\": true,\n  \"message\": \"Payment status updated successfully\"\n}"
+				}
+			]
+		}
+	]
+}
