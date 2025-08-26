@@ -62,15 +62,24 @@ import {
 import { organizationService } from '../../services/organizationService';
 import { GridLegacy as Grid } from "@mui/material";
 interface Driver {
-  _id: string;
+  id: number;
   name: string;
   email: string;
   phone: string;
-  isActive: boolean;
-  createdAt: string;
-  id: string;
-  isSent?: boolean;
-  documents?: string[];
+  isActive: number;
+  created_at: string;
+  updated_at: string;
+  isSent: number;
+  documents: string[];
+  adress?: string;
+  email_verified_at?: string;
+  role: string;
+  organization_id: number;
+  active_route?: {
+    id: number;
+    name: string;
+    activated_at: string;
+  };
 }
 
 interface TabPanelProps {
@@ -145,8 +154,8 @@ export const Drivers: React.FC = () => {
       const response = await organizationService.listDrivers();
       console.log('Full response:', response);
       console.log('Response data:', response.data);
-      console.log('Users array:', response.data?.users);
-      setDrivers(response.data?.users || []);
+      console.log('Users array:', response.data?.data?.users);
+      setDrivers(response.data?.data?.users || []);
     } catch (error) {
       console.error('Failed to fetch drivers:', error);
     } finally {
@@ -181,24 +190,25 @@ export const Drivers: React.FC = () => {
 
   const handleEdit = async (driver: Driver) => {
     handleMenuClose();
-    setLoadingEdit(true);
     setSelectedDriver(driver);
     setEditFormData({
       name: driver.name,
       email: driver.email,
       phone: driver.phone,
-      isActive: driver.isActive,
+      isActive: driver.isActive === 1,
     });
     setDocumentsToDelete([]);
     setEditDocumentsFiles(null);
+    setShowEditModal(true);
+    setLoadingEdit(true);
 
     try {
       const response = await organizationService.getDriverDetails(driver.id);
-      if (response.data && response.data.user) {
+      if (response.data && response.data.data && response.data.data.driver) {
         const driverWithDocs = {
           ...driver,
-          ...response.data.user,
-          documents: response.data.user.documents || []
+          ...response.data.data.driver,
+          documents: response.data.data.driver.documents || []
         };
         setSelectedDriver(driverWithDocs);
       }
@@ -207,8 +217,6 @@ export const Drivers: React.FC = () => {
     } finally {
       setLoadingEdit(false);
     }
-
-    setShowEditModal(true);
   };
 
   const handleUpdate = async (e: React.FormEvent) => {
@@ -269,7 +277,7 @@ export const Drivers: React.FC = () => {
     setSendingCredentials(true);
     try {
       await organizationService.sendDriverCredentials(driver.id);
-      setSuccessMessage(`Credentials ${driver.isSent ? 'resent' : 'sent'} successfully to ${driver.email}`);
+      setSuccessMessage(`Credentials ${driver.isSent === 1 ? 'resent' : 'sent'} successfully to ${driver.email}`);
       setShowSuccessSnackbar(true);
       await fetchDrivers();
     } catch (error) {
@@ -284,18 +292,17 @@ export const Drivers: React.FC = () => {
     setShowDetailsModal(true);
     setLoadingDriverDetails(true);
     setIsDocumentEditMode(false);
-    setSelectedDriver(driver);
+    setSelectedDriver(null); // Clear previous data
     setDetailsTabValue(0);
 
     try {
       const response = await organizationService.getDriverDetails(driver.id);
-      if (response.data && response.data.user) {
-        const driverWithDocs = {
-          ...driver,
-          ...response.data.user,
-          documents: response.data.user.documents || []
-        };
-        setSelectedDriver(driverWithDocs);
+      if (response.data && response.data.data && response.data.data.driver) {
+        // Use fresh data from backend instead of merging with old data
+        setSelectedDriver({
+          ...response.data.data.driver,
+          documents: response.data.data.driver.documents || []
+        });
       }
     } catch (error) {
       console.error('Failed to fetch driver details:', error);
@@ -310,12 +317,11 @@ export const Drivers: React.FC = () => {
       try {
         await organizationService.deleteDriverDocument(driverId, documentPath);
 
-        const response = await organizationService.getDriverDetails(driverId);
-        if (response.data && response.data.user && selectedDriver) {
+        // Update selectedDriver immediately
+        if (selectedDriver) {
           const updatedDriver = {
             ...selectedDriver,
-            ...response.data.user,
-            documents: response.data.user.documents || []
+            documents: selectedDriver.documents?.filter(doc => doc !== documentPath) || []
           };
           setSelectedDriver(updatedDriver);
         }
@@ -370,12 +376,13 @@ export const Drivers: React.FC = () => {
 
       await organizationService.editDriverWithDocuments(selectedDriver.id, formData);
 
+      // Fetch fresh driver details to get updated documents
       const response = await organizationService.getDriverDetails(selectedDriver.id);
-      if (response.data && response.data.user) {
+      if (response.data && response.data.data && response.data.data.driver) {
         const updatedDriver = {
           ...selectedDriver,
-          ...response.data.user,
-          documents: response.data.user.documents || []
+          ...response.data.data.driver,
+          documents: response.data.data.driver.documents || []
         };
         setSelectedDriver(updatedDriver);
       }
@@ -423,9 +430,9 @@ export const Drivers: React.FC = () => {
   };
 
   const filteredDrivers = drivers.filter(driver =>
-    driver.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    driver.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    driver.phone.includes(searchTerm)
+    driver.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    driver.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    driver.phone?.includes(searchTerm)
   );
 
   const getInitials = (name: string) => {
@@ -509,11 +516,11 @@ export const Drivers: React.FC = () => {
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Box sx={{ width: 12, height: 12, bgcolor: '#4CAF50', borderRadius: '50%' }} />
-                  <Typography variant="body2">Active: {drivers.filter(d => d.isActive).length}</Typography>
+                  <Typography variant="body2">Active: {drivers.filter(d => d.isActive === 1).length}</Typography>
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Box sx={{ width: 12, height: 12, bgcolor: '#F44336', borderRadius: '50%' }} />
-                  <Typography variant="body2">Inactive: {drivers.filter(d => !d.isActive).length}</Typography>
+                  <Typography variant="body2">Inactive: {drivers.filter(d => d.isActive === 0).length}</Typography>
                 </Box>
               </Box>
             </Grid>
@@ -530,6 +537,7 @@ export const Drivers: React.FC = () => {
               <TableCell sx={{ fontWeight: 'bold' }}>Driver</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }}>Contact</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }}>Active Route</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }}>Bags</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }}>Joined</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }}>Actions</TableCell>
@@ -572,29 +580,33 @@ export const Drivers: React.FC = () => {
                 </TableCell>
 
                 <TableCell>
-                  {(() => {
-                    const activeRoute = getDriverActiveRoute(driver.id);
-                    return activeRoute ? (
-                      <Box>
-                        <Typography variant="body2" fontWeight="medium" color="primary.main">
-                          {activeRoute.name}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {activeRoute.path}
-                        </Typography>
-                      </Box>
-                    ) : (
-                      <Typography variant="body2" color="text.secondary">
-                        No active route
+                  {driver.active_route ? (
+                    <Box>
+                      <Typography variant="body2" fontWeight="medium" color="primary.main">
+                        {driver.active_route.name}
                       </Typography>
-                    );
-                  })()}
+                      <Typography variant="caption" color="text.secondary">
+                        Active since {new Date(driver.active_route.activated_at).toLocaleDateString()}
+                      </Typography>
+                    </Box>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      No active route
+                    </Typography>
+                  )}
+                </TableCell>
+
+                <TableCell>
+                  <Typography variant="body2" fontWeight="medium">
+                    {driver.allocated_bags || 0}
+                  </Typography>
+                 
                 </TableCell>
 
                 <TableCell>
                   <Chip
-                    label={driver.isActive ? 'Active' : 'Inactive'}
-                    color={driver.isActive ? 'success' : 'error'}
+                    label={driver.isActive === 1 ? 'Active' : 'Inactive'}
+                    color={driver.isActive === 1 ? 'success' : 'error'}
                     variant="outlined"
                     size="small"
                   />
@@ -602,7 +614,7 @@ export const Drivers: React.FC = () => {
 
                 <TableCell>
                   <Typography variant="body2" color="text.secondary">
-                    {new Date(driver.createdAt).toLocaleDateString()}
+                    {new Date(driver.created_at).toLocaleDateString()}
                   </Typography>
                 </TableCell>
 
@@ -647,7 +659,7 @@ export const Drivers: React.FC = () => {
           disabled={sendingCredentials}
         >
           <SendIcon sx={{ mr: 2, fontSize: 20 }} />
-          {sendingCredentials ? 'Sending...' : (menuDriver?.isSent ? 'Resend Credentials' : 'Send Credentials')}
+          {sendingCredentials ? 'Sending...' : (menuDriver?.isSent === 1 ? 'Resend Credentials' : 'Send Credentials')}
         </MenuItem>
         <MenuItem onClick={() => menuDriver && handleViewDetails(menuDriver)}>
           <VisibilityIcon sx={{ mr: 2, fontSize: 20 }} />
@@ -798,7 +810,14 @@ export const Drivers: React.FC = () => {
                 />
               </Grid>
               
-              {selectedDriver?.documents && selectedDriver.documents.length > 0 && (
+              {loadingEdit ? (
+                <Grid item xs={12}>
+                  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 4 }}>
+                    <CircularProgress size={30} />
+                    <Typography sx={{ ml: 2 }}>Loading driver details...</Typography>
+                  </Box>
+                </Grid>
+              ) : selectedDriver?.documents && selectedDriver.documents.length > 0 && (
                 <Grid item xs={12}>
                   <Typography variant="h6" gutterBottom>
                     Current Documents ({selectedDriver.documents.length})
@@ -847,17 +866,27 @@ export const Drivers: React.FC = () => {
           <Box sx={{ display: 'flex', gap: 1, ml: 'auto' }}>
             <IconButton
               size="small"
-              href={doc}
-              target="_blank"
-              rel="noopener noreferrer"
+              onClick={() => window.open(organizationService.getSecureDocumentUrl(doc), '_blank')}
               sx={{ color: 'primary.main' }}
             >
               <VisibilityIcon />
             </IconButton>
             <IconButton
               size="small"
-              href={doc}
-              download={fileName}
+              onClick={async () => {
+                try {
+                  const response = await fetch(organizationService.getSecureDocumentUrl(doc));
+                  const blob = await response.blob();
+                  const url = window.URL.createObjectURL(blob);
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.download = fileName;
+                  link.click();
+                  window.URL.revokeObjectURL(url);
+                } catch (error) {
+                  console.error('Download failed:', error);
+                }
+              }}
               sx={{ color: 'info.main' }}
             >
               <DownloadIcon />
@@ -945,7 +974,12 @@ export const Drivers: React.FC = () => {
           </IconButton>
         </DialogTitle>
         <DialogContent>
-          {selectedDriver && (
+          {loadingDriverDetails ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 8 }}>
+              <CircularProgress size={40} />
+              <Typography sx={{ ml: 2 }}>Loading driver details...</Typography>
+            </Box>
+          ) : selectedDriver && (
             <Box>
               {/* Driver Info Header */}
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 3 }}>
@@ -964,8 +998,8 @@ export const Drivers: React.FC = () => {
                     {selectedDriver.name}
                   </Typography>
                   <Chip
-                    label={selectedDriver.isActive ? 'Active' : 'Inactive'}
-                    color={selectedDriver.isActive ? 'success' : 'error'}
+                    label={selectedDriver.isActive === 1 ? 'Active' : 'Inactive'}
+                    color={selectedDriver.isActive === 1 ? 'success' : 'error'}
                     size="small"
                     sx={{ mt: 1 }}
                   />
@@ -1012,7 +1046,7 @@ export const Drivers: React.FC = () => {
                           <CalendarIcon color="primary" />
                           <Typography variant="h6">Joined Date</Typography>
                         </Box>
-                        <Typography>{new Date(selectedDriver.createdAt).toLocaleDateString()}</Typography>
+                        <Typography>{new Date(selectedDriver.created_at).toLocaleDateString()}</Typography>
                       </CardContent>
                     </Card>
                   </Grid>
@@ -1024,8 +1058,8 @@ export const Drivers: React.FC = () => {
                           <Typography variant="h6">Credentials Status</Typography>
                         </Box>
                         <Chip
-                          label={selectedDriver.isSent ? 'Credentials Sent' : 'Credentials Not Sent'}
-                          color={selectedDriver.isSent ? 'info' : 'warning'}
+                          label={selectedDriver.isSent === 1 ? 'Credentials Sent' : 'Credentials Not Sent'}
+                          color={selectedDriver.isSent === 1 ? 'info' : 'warning'}
                           variant="outlined"
                         />
                       </CardContent>
@@ -1109,7 +1143,7 @@ export const Drivers: React.FC = () => {
         const isImage = isImageFile(fileName);
 
         return (
-          <Grid item xs={12} sm={6} md={4} lg={3} key={`doc-detail-${index}`}>
+          <Grid item xs={12} sm={8} md={6} lg={4} key={`doc-detail-${index}`}>
             <Card
               variant="outlined"
               sx={{
@@ -1241,7 +1275,7 @@ export const Drivers: React.FC = () => {
                 )}
               </Box>
 
-              <CardContent sx={{ p: 2.5 }}>
+              <CardContent sx={{ p: 2.5, minHeight: 120 }}>
                 <Typography
                   variant="subtitle1"
                   sx={{
@@ -1264,9 +1298,7 @@ export const Drivers: React.FC = () => {
                   <Button
                     size="small"
                     variant="contained"
-                    href={doc}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    onClick={() => window.open(organizationService.getSecureDocumentUrl(doc), '_blank')}
                     startIcon={<VisibilityIcon />}
                     sx={{
                       flex: 1,
@@ -1288,8 +1320,20 @@ export const Drivers: React.FC = () => {
                   <Button
                     size="small"
                     variant="outlined"
-                    href={doc}
-                    download={fileName}
+                    onClick={async () => {
+                      try {
+                        const response = await fetch(organizationService.getSecureDocumentUrl(doc));
+                        const blob = await response.blob();
+                        const url = window.URL.createObjectURL(blob);
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.download = fileName;
+                        link.click();
+                        window.URL.revokeObjectURL(url);
+                      } catch (error) {
+                        console.error('Download failed:', error);
+                      }
+                    }}
                     startIcon={<DownloadIcon />}
                     sx={{
                       flex: 1,

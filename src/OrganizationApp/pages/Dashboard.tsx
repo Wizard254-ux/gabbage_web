@@ -22,6 +22,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   }, []);
 
   const fetchStats = async () => {
+    console.log('🚀 Dashboard: Starting to fetch stats...');
     try {
       const [driversRes, clientsRes, routesRes] = await Promise.all([
         organizationService.listDrivers(),
@@ -29,21 +30,49 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         organizationService.getAllRoutes(),
       ]);
 
-      const drivers = driversRes.data.users || [];
-      const clients = clientsRes.data.users || [];
-      const routes = routesRes.data.data || []; // Fixed: routes are in data.data, not data.routes
+      console.log('📊 Dashboard: API responses:', {
+        drivers: driversRes.data,
+        clients: clientsRes.data,
+        routes: routesRes.data
+      });
 
-      setStats({
+      const drivers = driversRes.data?.data?.users || [];
+      const clients = clientsRes.data?.data?.users || [];
+      const routes = routesRes.data?.data?.data || [];
+
+      console.log('🔍 Dashboard: Detailed data check:', {
+        driversCount: drivers.length,
+        clientsCount: clients.length,
+        routesCount: routes.length,
+        driversData: drivers,
+        clientsData: clients
+      });
+
+      const activeDrivers = drivers.filter((d: any) => d.isActive === 1 || d.isActive === true);
+      const activeClients = clients.filter((c: any) => c.isActive === 1 || c.isActive === true);
+      
+      console.log('🔍 Dashboard: Active filtering results:', {
+        activeDrivers: activeDrivers,
+        activeClients: activeClients,
+        activeDriversCount: activeDrivers.length,
+        activeClientsCount: activeClients.length
+      });
+
+      const calculatedStats = {
         totalDrivers: drivers.length,
         totalClients: clients.length,
         totalRoutes: routes.length,
-        activeDrivers: drivers.filter((d: any) => d.isActive).length,
-        activeClients: clients.filter((c: any) => c.isActive).length,
-      });
+        activeDrivers: activeDrivers.length,
+        activeClients: activeClients.length,
+      };
+      
+      console.log('📊 Dashboard: Calculated stats:', calculatedStats);
+      setStats(calculatedStats);
     } catch (error) {
-      console.error('Failed to fetch stats:', error);
+      console.error('❌ Dashboard: Failed to fetch stats:', error);
     } finally {
       setLoading(false);
+      console.log('🏁 Dashboard: Stats fetching completed');
     }
   };
 
@@ -67,7 +96,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       {/* Greeting */}
       <div className="mb-8">
         <h2 className="text-3xl font-bold text-gray-900">
-          {getGreeting()}, {admin?.user.name}!
+          {getGreeting()}, {admin?.data?.user?.name}!
         </h2>
         <p className="text-gray-600 mt-2">Here's what's happening with your organization today.</p>
       </div>

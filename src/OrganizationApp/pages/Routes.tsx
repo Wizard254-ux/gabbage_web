@@ -373,35 +373,36 @@ export const Routes: React.FC = () => {
                 </TableCell>
 
                 <TableCell>
-                  {(() => {
-                    const assignedDriver = getAssignedDriver(route.id);
-                    return assignedDriver ? (
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Avatar
-                          sx={{
-                            bgcolor: 'primary.main',
-                            width: 32,
-                            height: 32,
-                            fontSize: '0.75rem'
-                          }}
-                        >
-                          {assignedDriver.name.charAt(0).toUpperCase()}
-                        </Avatar>
-                        <Box>
-                          <Typography variant="body2" fontWeight="medium">
-                            {assignedDriver.name}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {assignedDriver.email}
-                          </Typography>
+                  {route.active_drivers && route.active_drivers.length > 0 ? (
+                    <Box>
+                      {route.active_drivers.map((driver, index) => (
+                        <Box key={driver.id} sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: index < route.active_drivers.length - 1 ? 1 : 0 }}>
+                          <Avatar
+                            sx={{
+                              bgcolor: 'primary.main',
+                              width: 32,
+                              height: 32,
+                              fontSize: '0.75rem'
+                            }}
+                          >
+                            {driver.name.charAt(0).toUpperCase()}
+                          </Avatar>
+                          <Box>
+                            <Typography variant="body2" fontWeight="medium">
+                              {driver.name}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              Active since {new Date(driver.activated_at).toLocaleDateString()}
+                            </Typography>
+                          </Box>
                         </Box>
-                      </Box>
-                    ) : (
-                      <Typography variant="body2" color="text.secondary">
-                        No driver assigned
-                      </Typography>
-                    );
-                  })()}
+                      ))}
+                    </Box>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      No active drivers
+                    </Typography>
+                  )}
                 </TableCell>
 
                 <TableCell>
