@@ -1,46 +1,41 @@
-import React from 'react';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { Login } from './AdminApp/components/Login';
-import { AdminApp } from './AdminApp/AdminApp';
-import { OrganizationApp } from './OrganizationApp/OrganizationApp';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { ThemeProvider, createTheme } from '@mui/material/styles';
+import CssBaseline from '@mui/material/CssBaseline';
+import Login from './pages/Login';
+import AdminLayout from './components/AdminLayout';
+import Dashboard from './pages/admin/Dashboard';
+import Organizations from './pages/admin/Organizations';
+import AdminList from './pages/admin/AdminList';
 
-const AppContent: React.FC = () => {
-  const { isAuthenticated, logout, admin } = useAuth();
-
-  if (!isAuthenticated) {
-    return <Login />;
-  }
-
-  // Route based on user role
-  switch (admin?.data?.user?.role) {
-    case 'admin':
-      return <AdminApp onLogout={logout} />;
-    case 'organization':
-      return <OrganizationApp onLogout={logout} />;
-    default:
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
-            <p className="text-gray-600 mb-4">Your role does not have access to this application.</p>
-            <button
-              onClick={logout}
-              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg"
-            >
-              Logout
-            </button>
-          </div>
-        </div>
-      );
-  }
-};
+const theme = createTheme({
+  palette: {
+    primary: {
+      main: '#16a34a',
+    },
+    secondary: {
+      main: '#dc2626',
+    },
+  },
+});
 
 function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <Router>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route path="dashboard" element={<Dashboard />} />
+            <Route path="organizations" element={<Organizations />} />
+            <Route path="list" element={<AdminList />} />
+            <Route index element={<Navigate to="dashboard" replace />} />
+          </Route>
+          <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />
+        </Routes>
+      </Router>
+    </ThemeProvider>
   );
 }
 
-export default App
+export default App;

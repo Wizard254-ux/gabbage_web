@@ -4,9 +4,6 @@ const api = axios.create({
    baseURL: "http://127.0.0.1:8000/api",
   //baseURL: "https://garbagesystem.onrender.com/api",
   timeout: 30000,
-  headers: {
-    "Content-Type": "application/json",
-  },
 });
 
 api.interceptors.request.use(
@@ -17,7 +14,9 @@ api.interceptors.request.use(
         const adminData = JSON.parse(admin);
         const token = adminData.data?.access_token;
         if (token) {
-          config.headers.Authorization = `Bearer ${token}`;
+          config.headers['Authorization'] = `Bearer ${token}`;
+          console.log('Request URL:', config.url);
+          console.log('Authorization header:', config.headers['Authorization']);
         }
       } catch (error) {
         localStorage.removeItem('admin');
@@ -33,9 +32,7 @@ api.interceptors.response.use(
   async (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('admin');
-      window.location.reload();
     }
-    
     return Promise.reject(error);
   }
 );
@@ -47,12 +44,29 @@ export const adminService = {
 
   logout: () => api.post("/auth/logout"),
 
+  // Dashboard
+  getDashboardStats: () => api.get("/admin/dashboard/stats"),
+
+  // Admin Management
+  listAdmins: () => api.get("/admin/admins/list"),
+  
+  createAdmin: (data: any) => api.post("/admin/admins/create", data),
+
   // Organization Management
   listOrganizations: (params?: any) =>
     api.post("/auth/organization/manage", { action: "list", ...params }),
 
-  addOrganization: (data: FormData) =>
-    api.post("/auth/register/organization", data),
+  addOrganization: (data: FormData) => {
+    console.log('Sending FormData to backend:');
+    for (let [key, value] of data.entries()) {
+      console.log(key, value);
+    }
+    return api.post("/auth/create-organization", data, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+  },
 
   updateOrganization: (organizationId: string, updateData: any) =>
     api.post("/auth/organization/manage", {
@@ -68,8 +82,20 @@ export const adminService = {
     }),
 
   getOrganization: (organizationId: string) =>
-    api.post("/auth/organization/manage", {
-      action: "get",
+    api.get(`/admin/organizations/${organizationId}`),
+
+  sendCredentials: (organizationId: string) =>
+    api.post("/admin/organizations/send-credentials", {
+      organizationId,
+    }),
+
+  toggleOrganizationStatus: (organizationId: string) =>
+    api.post("/admin/organizations/deactivate", {
+      organizationId,
+    }),
+
+  deactivateOrganization: (organizationId: string) =>
+    api.post("/admin/organizations/deactivate", {
       organizationId,
     }),
 };
