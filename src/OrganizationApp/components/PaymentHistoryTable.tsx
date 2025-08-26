@@ -76,7 +76,13 @@ export const PaymentHistoryTable: React.FC<PaymentHistoryTableProps> = ({
 }) => {
   // Function to format date
   const formatDate = (dateString: string) => {
-    return format(new Date(dateString), 'dd/MM/yyyy');
+    if (!dateString) return '-';
+    try {
+      return format(new Date(dateString), 'dd/MM/yyyy HH:mm');
+    } catch (error) {
+      console.error('Invalid date:', dateString);
+      return '-';
+    }
   };
 
   // Function to get status badge color
@@ -114,10 +120,10 @@ export const PaymentHistoryTable: React.FC<PaymentHistoryTableProps> = ({
         return 'Fully Allocated';
       case 'partially_allocated':
         return 'Partially Allocated';
-      case 'unallocated':
-        return 'Unallocated';
+      case 'not_allocated':
+        return 'Not Allocated';
       default:
-        return status.charAt(0).toUpperCase() + status.slice(1);
+        return status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' ');
     }
   };
 
@@ -147,40 +153,30 @@ export const PaymentHistoryTable: React.FC<PaymentHistoryTableProps> = ({
           </thead>
           <tbody>
             {payments.map((payment, index) => (
-              <tr key={payment._id} className="hover:bg-gray-50">
+              <tr key={payment.id} className="hover:bg-gray-50">
                 <td className="py-3 px-4 border-b">{startIndex + index + 1}</td>
-                <td className="py-3 px-4 border-b">{formatDate(payment.paidAt || payment.createdAt)}</td>
-                <td className="py-3 px-4 border-b font-medium">{payment.clientName || payment.metadata?.payerName || '-'}</td>
-                <td className="py-3 px-4 border-b">{payment.accountNumber}</td>
+                <td className="py-3 px-4 border-b">{formatDate(payment.trans_time || payment.created_at)}</td>
+                <td className="py-3 px-4 border-b font-medium">{payment.client?.name || `${payment.first_name} ${payment.last_name}`.trim() || '-'}</td>
+                <td className="py-3 px-4 border-b">{payment.account_number}</td>
                 <td className="py-3 px-4 border-b font-medium text-green-600">
-                  KES {payment.amount.toLocaleString()}
+                  KSH {parseFloat(payment.amount || '0').toLocaleString()}
                 </td>
-                <td className="py-3 px-4 border-b capitalize">{payment.paymentMethod}</td>
+                <td className="py-3 px-4 border-b capitalize">{payment.payment_method}</td>
                 <td className="py-3 px-4 border-b font-mono">
-                  {payment.mpesaReceiptNumber || 
-                   payment.chequeNumber || 
-                   payment.transferReference || 
-                   payment.rtgsReference || 
-                   payment.transactionId || 
-                   '-'}
+                  {payment.trans_id || '-'}
                 </td>
-                <td className="py-3 px-4 border-b">{payment.phoneNumber || '-'}</td>
+                <td className="py-3 px-4 border-b">{payment.phone_number || '-'}</td>
                 <td className="py-3 px-4 border-b">
-                  {payment.invoiceAllocations && payment.invoiceAllocations.length > 0 ? (
+                  {payment.invoices_processed && payment.invoices_processed.length > 0 ? (
                     <div className="space-y-1">
-                      {payment.invoiceAllocations.map((allocation, idx) => (
+                      {payment.invoices_processed.map((invoiceId, idx) => (
                         <div key={idx} className="text-xs">
                           <span className="font-medium text-blue-600">
-                            {allocation.invoiceId.invoiceNumber}
-                          </span>
-                          <span className="text-gray-500 ml-1">
-                            (KES {allocation.amount.toLocaleString()})
+                            INV-{invoiceId}
                           </span>
                         </div>
                       ))}
                     </div>
-                  ) : payment.invoice ? (
-                    payment.invoice.invoiceNumber
                   ) : (
                     '-'
                   )}
@@ -191,31 +187,23 @@ export const PaymentHistoryTable: React.FC<PaymentHistoryTableProps> = ({
                   </span>
                 </td>
                 <td className="py-3 px-4 border-b">
-                  {payment.allocationStatus ? (
-                    <span className={`font-medium text-blue-600 `}>
-                      {formatAllocationStatus(payment.allocationStatus)}
-                    </span>
-                  ) : (
-                    '-'
-                  )}
+                  <span className={`font-medium ${
+                    payment.status === 'fully_allocated' ? 'text-green-600' :
+                    payment.status === 'partially_allocated' ? 'text-yellow-600' :
+                    'text-red-600'
+                  }`}>
+                    {formatAllocationStatus(payment.status)}
+                  </span>
                 </td>
                 <td className="py-3 px-4 border-b">
-                  {payment.allocatedAmount !== undefined ? (
-                    <span className="font-medium text-blue-600">
-                      KES {payment.allocatedAmount.toLocaleString()}
-                    </span>
-                  ) : (
-                    '-'
-                  )}
+                  <span className="font-medium text-blue-600">
+                    KSH {parseFloat(payment.allocated_amount || '0').toLocaleString()}
+                  </span>
                 </td>
                 <td className="py-3 px-4 border-b">
-                  {payment.remainingAmount !== undefined ? (
-                    <span className="font-medium text-orange-600">
-                      KES {payment.remainingAmount.toLocaleString()}
-                    </span>
-                  ) : (
-                    '-'
-                  )}
+                  <span className="font-medium text-orange-600">
+                    KSH {parseFloat(payment.remaining_amount || '0').toLocaleString()}
+                  </span>
                 </td>
               </tr>
             ))}

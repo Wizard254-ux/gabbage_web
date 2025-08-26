@@ -4,37 +4,38 @@ import { organizationService } from '../../services/organizationService';
 
 interface Payment {
   id: number;
-  amount: number;
-  paymentMethod: string;
-  transactionId: string;
-  mpesaReceiptNumber?: string;
-  phoneNumber?: string;
+  trans_id: string;
+  first_name: string;
+  amount: string;
+  payment_method: string;
   status: string;
-  allocatedAmount?: number;
-  paidAt?: string;
-  createdAt: string;
-  invoiceAllocations?: unknown[];
-  invoiceIds?: number[];
+  created_at: string;
 }
 
 interface InvoiceDetails {
   id: number;
-  invoiceNumber: string;
-  accountNumber: string;
-  totalAmount: number;
-  amountPaid: number;
-  remainingBalance: number;
-  paymentStatus: string;
-  dueStatus: string;
-  dueDate: string;
-  issuedDate: string;
-  billingPeriodStart: string;
-  billingPeriodEnd: string;
-  user: {
+  invoice_number: string;
+  type: string;
+  title: string;
+  client_id: number;
+  organization_id: number;
+  amount: string;
+  due_date: string;
+  description: string;
+  status: string;
+  payment_ids: number[] | null;
+  paid_amount: string;
+  payment_status: string;
+  created_at: string;
+  updated_at: string;
+  client: {
+    id: number;
     name: string;
     email: string;
     phone: string;
-    address: string;
+    adress: string;
+    role: string;
+    documents: string[];
   };
   payments: Payment[];
 }
@@ -60,10 +61,12 @@ export const InvoiceDetails: React.FC<InvoiceDetailsProps> = ({ invoiceId, onNav
     setError(null);
 
     try {
-      const response = await organizationService.getInvoiceWithPayments(id);
+      const response = await organizationService.getInvoiceDetails(id);
+      console.log('Invoice details response:', response);
+      console.log('Invoice details response.data:', response.data);
       
-      if (response.data.success) {
-        setInvoice(response.data.data);
+      if (response.data.status) {
+        setInvoice(response.data.data.invoice);
       } else {
         setError('Failed to fetch invoice details');
       }
@@ -212,16 +215,16 @@ export const InvoiceDetails: React.FC<InvoiceDetailsProps> = ({ invoiceId, onNav
         <div className="p-6">
           <div className="flex justify-between items-start mb-6">
             <div>
-              <h3 className="text-xl font-semibold text-gray-900">{invoice.invoiceNumber}</h3>
-              <p className="text-sm text-gray-600">Account: {invoice.accountNumber}</p>
+              <h3 className="text-xl font-semibold text-gray-900">{invoice.invoice_number}</h3>
+              <p className="text-sm text-gray-600">Client ID: {invoice.client.id}</p>
             </div>
             <div className="text-right">
               <p className="text-sm text-gray-600">Client</p>
-              <p className="font-medium text-gray-900">{invoice.user.name}</p>
-              <p className="text-sm text-gray-600">{invoice.user.email}</p>
-              <p className="text-sm text-gray-600">{invoice.user.phone}</p>
-              {invoice.user.address && (
-                <p className="text-sm text-gray-600">{invoice.user.address}</p>
+              <p className="font-medium text-gray-900">{invoice.client.name}</p>
+              <p className="text-sm text-gray-600">{invoice.client.email}</p>
+              <p className="text-sm text-gray-600">{invoice.client.phone}</p>
+              {invoice.client.adress && (
+                <p className="text-sm text-gray-600">{invoice.client.adress}</p>
               )}
             </div>
           </div>
@@ -229,29 +232,29 @@ export const InvoiceDetails: React.FC<InvoiceDetailsProps> = ({ invoiceId, onNav
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
             <div className="bg-gray-50 p-4 rounded-lg">
               <p className="text-sm font-medium text-gray-600">Total Amount</p>
-              <p className="text-2xl font-bold text-gray-900">{formatCurrency(invoice.totalAmount)}</p>
+              <p className="text-2xl font-bold text-gray-900">{formatCurrency(parseFloat(invoice.amount))}</p>
             </div>
             <div className="bg-green-50 p-4 rounded-lg">
               <p className="text-sm font-medium text-gray-600">Amount Paid</p>
-              <p className="text-2xl font-bold text-green-600">{formatCurrency(invoice.amountPaid)}</p>
+              <p className="text-2xl font-bold text-green-600">{formatCurrency(parseFloat(invoice.paid_amount))}</p>
             </div>
-            <div className={`p-4 rounded-lg ${invoice.remainingBalance > 0 ? 'bg-red-50' : 'bg-green-50'}`}>
+            <div className={`p-4 rounded-lg ${(parseFloat(invoice.amount) - parseFloat(invoice.paid_amount)) > 0 ? 'bg-red-50' : 'bg-green-50'}`}>
               <p className="text-sm font-medium text-gray-600">Remaining Balance</p>
-              <p className={`text-2xl font-bold ${invoice.remainingBalance > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                {formatCurrency(invoice.remainingBalance)}
+              <p className={`text-2xl font-bold ${(parseFloat(invoice.amount) - parseFloat(invoice.paid_amount)) > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                {formatCurrency(parseFloat(invoice.amount) - parseFloat(invoice.paid_amount))}
               </p>
             </div>
             <div className="bg-blue-50 p-4 rounded-lg">
               <p className="text-sm font-medium text-gray-600">Status</p>
               <span className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${
-                invoice.paymentStatus === 'fully_paid' 
+                invoice.payment_status === 'fully_paid' 
                   ? 'bg-green-100 text-green-800' 
-                  : invoice.paymentStatus === 'partially_paid'
+                  : invoice.payment_status === 'partially_paid'
                   ? 'bg-blue-100 text-blue-800'
                   : 'bg-yellow-100 text-yellow-800'
               }`}>
-                {invoice.paymentStatus === 'fully_paid' ? 'Fully Paid' : 
-                 invoice.paymentStatus === 'partially_paid' ? 'Partially Paid' : 'Unpaid'}
+                {invoice.payment_status === 'fully_paid' ? 'Fully Paid' : 
+                 invoice.payment_status === 'partially_paid' ? 'Partially Paid' : 'Unpaid'}
               </span>
             </div>
           </div>
@@ -260,16 +263,16 @@ export const InvoiceDetails: React.FC<InvoiceDetailsProps> = ({ invoiceId, onNav
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
               <div>
                 <span className="font-medium text-gray-600">Issue Date:</span>
-                <span className="ml-2 text-gray-900">{formatDate(invoice.issuedDate)}</span>
+                <span className="ml-2 text-gray-900">{formatDate(invoice.created_at)}</span>
               </div>
               <div>
                 <span className="font-medium text-gray-600">Due Date:</span>
-                <span className="ml-2 text-gray-900">{formatDate(invoice.dueDate)}</span>
+                <span className="ml-2 text-gray-900">{formatDate(invoice.due_date)}</span>
               </div>
               <div>
                 <span className="font-medium text-gray-600">Billing Period:</span>
                 <span className="ml-2 text-gray-900">
-                  {formatDate(invoice.billingPeriodStart)} - {formatDate(invoice.billingPeriodEnd)}
+                  {invoice.type === 'monthly' ? 'Monthly Service' : 'Custom'}
                 </span>
               </div>
             </div>
@@ -289,22 +292,22 @@ export const InvoiceDetails: React.FC<InvoiceDetailsProps> = ({ invoiceId, onNav
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Date
+                      Transaction ID
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      First Name
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Amount
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Method
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Transaction
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Amount Allocated
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Total Payment
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Date
                     </th>
                   </tr>
                 </thead>
@@ -312,42 +315,22 @@ export const InvoiceDetails: React.FC<InvoiceDetailsProps> = ({ invoiceId, onNav
                   {invoice.payments.map((payment) => (
                     <tr key={payment.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {formatDateTime(payment.paidAt || payment.createdAt)}
+                        {payment.trans_id}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        <div className="flex items-center">
-                          <span className="mr-2">{getPaymentMethodIcon(payment.paymentMethod)}</span>
-                          <span className="capitalize">{payment.paymentMethod.replace('_', ' ')}</span>
-                        </div>
+                        {payment.first_name}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        <div>
-                          {payment.mpesaReceiptNumber && (
-                            <div className="font-medium">{payment.mpesaReceiptNumber}</div>
-                          )}
-                          <div className="text-xs text-gray-500">{payment.transactionId}</div>
-                          {payment.phoneNumber && (
-                            <div className="text-xs text-gray-500">{payment.phoneNumber}</div>
-                          )}
-                        </div>
+                        {formatCurrency(parseFloat(payment.amount))}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        <span className="font-medium text-green-600">
-                          {formatCurrency(payment.allocatedAmount || payment.amount)}
-                        </span>
+                        {payment.payment_method}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {formatCurrency(payment.amount)}
-                        {payment.invoiceIds && payment.invoiceIds.length > 1 && (
-                          <div className="text-xs text-blue-600">
-                            Split across {payment.invoiceIds.length} invoices
-                          </div>
-                        )}
+                        {payment.status}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getPaymentStatusBadge(payment.status)}`}>
-                          {formatPaymentStatus(payment.status)}
-                        </span>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {formatDate(payment.created_at)}
                       </td>
                     </tr>
                   ))}

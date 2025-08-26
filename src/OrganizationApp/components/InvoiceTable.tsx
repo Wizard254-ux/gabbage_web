@@ -2,32 +2,30 @@ import React from 'react';
 import {format} from 'date-fns';
 
 interface Invoice {
-    _id: string;
-    invoiceNumber: string;
-    userId: {
-        _id: string;
+    id: number;
+    invoice_number: string;
+    type: string;
+    title: string;
+    client_id: number;
+    organization_id: number;
+    amount: string;
+    due_date: string;
+    description: string;
+    status: string;
+    payment_ids: number[] | null;
+    paid_amount: string;
+    payment_status: string;
+    created_at: string;
+    updated_at: string;
+    client: {
+        id: number;
         name: string;
         email: string;
         phone: string;
-        address: string;
+        adress: string;
+        role: string;
+        documents: string[];
     };
-    accountNumber: string;
-    totalAmount: number;
-    amountPaid: number;
-    remainingBalance: number;
-    status: string;
-    paymentStatus?: string;
-    dueStatus?: string;
-    dueDate: string;
-    issuedDate: string;
-    billingPeriodEnd: string,
-    billingPeriodStart: string,
-    id: string,
-    user:{
-      name:string,
-
-    },
-
 }
 
 interface InvoiceTableProps {
@@ -159,8 +157,8 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
                     <tbody>
                     {invoices.map((invoice, index) => {
                         console.log(invoice)
-                        const isOverdue = (invoice.dueStatus || invoice.status) === 'overdue';
-                        const isDue = (invoice.dueStatus || invoice.status) === 'due';
+                        const isOverdue = invoice.status === 'overdue';
+                        const isDue = invoice.status === 'due';
                         const rowClass = showAgingInfo
                             ? isOverdue
                                 ? 'hover:bg-red-50 bg-red-25'
@@ -173,24 +171,23 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
                             <tr key={invoice.id} className={rowClass}>
                                 <td className="py-3 px-4 border-b">{startIndex + index + 1}</td>
                                 <td className="py-3 px-4 border-b font-medium">
-                                    {invoice.invoiceNumber}
+                                    {invoice.invoice_number}
                                     {showAgingInfo && isOverdue && (
                                         <span className="ml-2 text-red-500 text-xs">⚠️</span>
                                     )}
                                 </td>
-                                <td className="py-3 px-4 border-b">{invoice.user.name}</td>
-                                <td className="py-3 px-4 border-b">{invoice.accountNumber}</td>
+                                <td className="py-3 px-4 border-b">{invoice.client.name}</td>
+                                <td className="py-3 px-4 border-b">{invoice.client.id}</td>
                                 <td className="py-3 px-4 border-b">
-                                    {formatDate(invoice.billingPeriodStart
-                                    )} - {formatDate(invoice.billingPeriodEnd)}
+                                    {invoice.type === 'monthly' ? 'Monthly Service' : 'Custom'}
                                 </td>
-                                <td className="py-3 px-4 border-b">{formatDate(invoice.issuedDate)}</td>
+                                <td className="py-3 px-4 border-b">{formatDate(invoice.created_at)}</td>
                                 <td className={`py-3 px-4 border-b ${showAgingInfo && isOverdue ? 'text-red-600 font-semibold' : ''}`}>
-                                    {formatDate(invoice.dueDate)}
+                                    {formatDate(invoice.due_date)}
                                     {showAgingInfo && (
                                         <div className="text-xs text-gray-500 mt-1">
                                             {(() => {
-                                                const dueDate = new Date(invoice.dueDate);
+                                                const dueDate = new Date(invoice.due_date);
                                                 const today = new Date();
                                                 const diffTime = today.getTime() - dueDate.getTime();
                                                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -207,21 +204,21 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
                                         </div>
                                     )}
                                 </td>
-                                <td className="py-3 px-4 border-b">KES {invoice.totalAmount.toLocaleString()}</td>
-                                <td className="py-3 px-4 border-b">KES {invoice.amountPaid.toLocaleString()}</td>
+                                <td className="py-3 px-4 border-b">KES {parseFloat(invoice.amount).toLocaleString()}</td>
+                                <td className="py-3 px-4 border-b">KES {parseFloat(invoice.paid_amount).toLocaleString()}</td>
                                 <td className={`py-3 px-4 border-b font-semibold ${showAgingInfo ? 'text-red-600' : ''}`}>
-                                    KES {invoice.remainingBalance.toLocaleString()}
+                                    KES {(parseFloat(invoice.amount) - parseFloat(invoice.paid_amount)).toLocaleString()}
                                 </td>
                                 <td className="py-3 px-4 border-b">
                     <span
-                        className={`px-2 py-1 text-xs rounded-full ${getPaymentStatusBadge(invoice.paymentStatus || invoice.status)}`}>
-                      {formatPaymentStatus(invoice.paymentStatus || invoice.status)}
+                        className={`px-2 py-1 text-xs rounded-full ${getPaymentStatusBadge(invoice.payment_status)}`}>
+                      {formatPaymentStatus(invoice.payment_status)}
                     </span>
                                 </td>
                                 <td className="py-3 px-4 border-b">
                     <span
-                        className={`px-2 py-1 text-xs rounded-full ${getDueStatusBadge(invoice.dueStatus || (invoice.status === 'overdue' ? 'overdue' : 'due'))}`}>
-                      {formatDueStatus(invoice.dueStatus || (invoice.status === 'overdue' ? 'overdue' : 'due'))}
+                        className={`px-2 py-1 text-xs rounded-full ${getDueStatusBadge(invoice.status)}`}>
+                      {formatDueStatus(invoice.status)}
                     </span>
                                 </td>
                                 {onViewInvoice && (

@@ -31,13 +31,13 @@ interface Pickup {
 }
 
 interface Route {
-  _id: string;
+  id: number;
   name: string;
   path: string;
 }
 
 interface Driver {
-  _id: string;
+  id: number;
   name: string;
 }
 
@@ -76,22 +76,46 @@ export const Pickups: React.FC = () => {
     setError(null);
     
     try {
-      const params: any = { page, limit: 10 };
+      const params: any = { page, limit: 50 };
       
       // Add filters if they exist
       if (status) params.status = status;
-      if (startDate) params.startDate = startDate;
-      if (endDate) params.endDate = endDate;
-      if (selectedRouteId) params.routeId = selectedRouteId;
-      if (selectedDriverId) params.driverId = selectedDriverId;
-      if (selectedPickupDay) params.pickupDay = selectedPickupDay;
+      if (startDate) params.start_date = startDate;
+      if (endDate) params.end_date = endDate;
+      if (selectedRouteId) params.route_id = selectedRouteId;
+      if (selectedDriverId) params.driver_id = selectedDriverId;
+      if (selectedPickupDay) params.pickup_day = selectedPickupDay;
+      
+      console.log('Filter states:', { status, startDate, endDate, selectedRouteId, selectedDriverId, selectedPickupDay });
+      console.log('Final params:', params);
       
       const response = await organizationService.getPickups(params);
       
-      if (response.data.success) {
-        setPickups(response.data.data);
-        console.log('pickups ',(response.data.data))
-        setPagination(response.data.pagination);
+      if (response.data.status) {
+        const responseData = response.data.data;
+        let allPickups = [];
+        
+        // Handle different response formats
+        if (responseData?.pickups) {
+          allPickups = responseData.pickups;
+        } else if (responseData?.picked || responseData?.unpicked) {
+          // Combine picked and unpicked arrays
+          allPickups = [...(responseData.picked || []), ...(responseData.unpicked || [])];
+        } else if (Array.isArray(responseData)) {
+          // Direct array response
+          allPickups = responseData;
+        }
+        
+        setPickups(allPickups);
+        console.log('pickups ', responseData)
+        // Use pagination from API response or set default
+        setPagination(responseData?.pagination || {
+          currentPage: page,
+          totalPages: Math.ceil(allPickups.length / 50),
+          totalPickups: allPickups.length,
+          hasNext: false,
+          hasPrev: false
+        });
       } else {
         setError('Failed to fetch pickups');
       }
@@ -105,9 +129,9 @@ export const Pickups: React.FC = () => {
   const fetchRoutes = async () => {
     try {
       const response = await organizationService.getPickupRoutes();
-      if (response.data.success) {
-        setRoutes(response.data.data);
-        console.log('fetched routes ',response.data)
+      if (response.data.status) {
+        setRoutes(response.data.data?.data || []);
+        console.log('fetched routes ', response.data)
       }
     } catch (err) {
       console.error('Failed to fetch routes:', err);
@@ -117,9 +141,9 @@ export const Pickups: React.FC = () => {
   const fetchDrivers = async () => {
     try {
       const response = await organizationService.getPickupDrivers();
-      if (response.data.success) {
-        setDrivers(response.data.data);
-        console.log('fethed drivers ',response.data.data)
+      if (response.data.status) {
+        setDrivers(response.data.data?.users || []);
+        console.log('fetched drivers ', response.data.data)
       }
     } catch (err) {
       console.error('Failed to fetch drivers:', err);
@@ -130,6 +154,7 @@ export const Pickups: React.FC = () => {
     fetchPickups();
     fetchRoutes();
     fetchDrivers();
+    fetchClients();
   }, []);
 
   const handlePageChange = (page: number) => {
@@ -138,7 +163,7 @@ export const Pickups: React.FC = () => {
 
   const handleFilterSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    fetchPickups(1); // Reset to first page when filtering
+    fetchPickups(1); // This will use the current filter state values
   };
 
   const handleClearFilters = () => {
@@ -151,18 +176,66 @@ export const Pickups: React.FC = () => {
     fetchPickups(1);
   };
 
-  const handleCreateWeeklyPickups = async () => {
+  const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
+  const [selectedClient, setSelectedClient] = useState<string>('');
+  const [selectedDriver, setSelectedDriver] = useState<string>('');
+  const [pickupDate, setPickupDate] = useState<string>('');
+  const [pickupStatus, setPickupStatus] = useState<string>('unpicked');
+  const [clients, setClients] = useState<any[]>([]);
+  const [clientSearchTerm, setClientSearchTerm] = useState<string>('');
+  const [searchedClients, setSearchedClients] = useState<any[]>([]);
+
+  const fetchClients = async () => {
+    try {
+      const response = await organizationService.listClients();
+      if (response.data.status) {
+        setClients(response.data.data?.users || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch clients:', err);
+    }
+  };
+
+  const handleCreatePickup = async () => {
     try {
       setLoading(true);
-      const response = await organizationService.createWeeklyPickups();
-      if (response.data.success) {
-        alert(`Created ${response.data.data.length} weekly pickups for active clients`);
-        fetchPickups(pagination.currentPage);
+      const response = await organizationService.createPickup({
+        client_id: selectedClient,
+        driver_id: selectedDriver || null,
+        pickup_date: pickupDate,
+        status: pickupStatus
+      });
+      if (response.data.status) {
+        alert('Pickup created successfully');
+        // Append new pickup to existing list
+        const newPickup = response.data.data.pickup;
+        setPickups(prevPickups => [newPickup, ...prevPickups]);
+        setShowCreateModal(false);
+        // Reset form
+        setSelectedClient('');
+        setSelectedDriver('');
+        setPickupDate('');
+        setPickupStatus('unpicked');
+        setClientSearchTerm('');
+        setSearchedClients([]);
       }
     } catch (err: any) {
-      alert('Failed to create weekly pickups: ' + (err.response?.data?.message || err.message));
+      alert('Failed to create pickup: ' + (err.response?.data?.message || err.message));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSearchClients = async () => {
+    if (!clientSearchTerm.trim()) return;
+    
+    try {
+      const response = await organizationService.searchClients({ name: clientSearchTerm });
+      if (response.data.status) {
+        setSearchedClients(response.data.data?.users || []);
+      }
+    } catch (err) {
+      console.error('Failed to search clients:', err);
     }
   };
 
@@ -192,9 +265,9 @@ export const Pickups: React.FC = () => {
                   className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
                 >
                   <option value="">All Statuses</option>
-                  <option value="scheduled">Scheduled</option>
-                  <option value="completed">Completed</option>
-                  <option value="missed">Missed</option>
+                  <option value="unpicked">Unpicked</option>
+                  <option value="picked">Picked</option>
+                  <option value="skipped">Skipped</option>
                 </select>
               </div>
               <div>
@@ -224,7 +297,7 @@ export const Pickups: React.FC = () => {
                 >
                   <option value="">All Routes</option>
                   {routes.map(route => (
-                    <option key={route._id} value={route._id}>
+                    <option key={route.id} value={route.id}>
                       {route.name} - {route.path}
                     </option>
                   ))}
@@ -240,7 +313,7 @@ export const Pickups: React.FC = () => {
                   <option value="">All Drivers</option>
                   <option value="unassigned">Unassigned</option>
                   {drivers.map(driver => (
-                    <option key={driver._id} value={driver._id}>
+                    <option key={driver.id} value={driver.id}>
                       {driver.name}
                     </option>
                   ))}
@@ -280,10 +353,10 @@ export const Pickups: React.FC = () => {
               </button>
               <button 
                 type="button"
-                onClick={handleCreateWeeklyPickups}
+                onClick={() => setShowCreateModal(true)}
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
               >
-                Create Weekly Pickups
+                Create Pickup
               </button>
             </div>
           </form>
@@ -314,6 +387,105 @@ export const Pickups: React.FC = () => {
           Showing {pickups.length} of {pagination.totalPickups} pickups
         </div>
       </div>
+
+      {/* Create Pickup Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-[rgba(0,0,0,0.5)] flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h2 className="text-lg font-semibold mb-4">Create Pickup</h2>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Client Search</label>
+                <div className="flex gap-2 mb-2">
+                  <input
+                    type="text"
+                    value={clientSearchTerm}
+                    onChange={(e) => setClientSearchTerm(e.target.value)}
+                    placeholder="Enter client name"
+                    className="flex-1 border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSearchClients}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                  >
+                    Search
+                  </button>
+                </div>
+                <select
+                  value={selectedClient}
+                  onChange={(e) => setSelectedClient(e.target.value)}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  required
+                >
+                  <option value="">Select Client</option>
+                  {(searchedClients.length > 0 ? searchedClients : clients).map(client => (
+                    <option key={client.id} value={client.id}>
+                      {client.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Driver</label>
+                <select
+                  value={selectedDriver}
+                  onChange={(e) => setSelectedDriver(e.target.value)}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                >
+                  <option value="">Unassigned</option>
+                  {drivers.map(driver => (
+                    <option key={driver.id} value={driver.id}>
+                      {driver.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Pickup Date</label>
+                <input
+                  type="date"
+                  value={pickupDate}
+                  onChange={(e) => setPickupDate(e.target.value)}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <select
+                  value={pickupStatus}
+                  onChange={(e) => setPickupStatus(e.target.value)}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                >
+                  <option value="unpicked">Unpicked</option>
+                  <option value="picked">Picked</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-2 mt-6">
+              <button
+                onClick={() => setShowCreateModal(false)}
+                className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreatePickup}
+                disabled={!selectedClient || !pickupDate || loading}
+                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? 'Creating...' : 'Create Pickup'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -4,30 +4,30 @@ import { InvoiceTable } from '../components/InvoiceTable';
 import { AgingSummaryTable } from '../components/AgingSummaryTable';
 
 interface Invoice {
-  _id: string;
-  id: string;
-  invoiceNumber: string;
-  userId: {
-    _id: string;
+  id: number;
+  invoice_number: string;
+  type: string;
+  title: string;
+  client_id: number;
+  organization_id: number;
+  amount: string;
+  due_date: string;
+  description: string;
+  status: string;
+  payment_ids: number[] | null;
+  paid_amount: string;
+  payment_status: string;
+  created_at: string;
+  updated_at: string;
+  client: {
+    id: number;
     name: string;
     email: string;
     phone: string;
-    address: string;
+    adress: string;
+    role: string;
+    documents: string[];
   };
-  user: {
-    name: string;
-  };
-  accountNumber: string;
-  totalAmount: number;
-  amountPaid: number;
-  remainingBalance: number;
-  status: string;
-  paymentStatus?: string;
-  dueStatus?: string;
-  dueDate: string;
-  issuedDate: string;
-  billingPeriodStart: string;
-  billingPeriodEnd: string;
 }
 
 interface PaginationData {
@@ -84,26 +84,35 @@ export const Invoices: React.FC<InvoicesProps> = ({ onNavigate }) => {
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
   const [accountNumber, setAccountNumber] = useState<string>('');
+  const [clientName, setClientName] = useState<string>('');
 
   const fetchInvoices = async (page: number = 1) => {
     setLoading(true);
     setError(null);
     
     try {
-      const params: Record<string, string | number> = { page, limit: 10 };
+      const params: Record<string, string | number> = { page, limit: 50 };
       
       // Add filters if they exist
       if (status) params.status = status;
       if (startDate) params.startDate = startDate;
       if (endDate) params.endDate = endDate;
       if (accountNumber) params.accountNumber = accountNumber;
+      if (clientName) params.clientName = clientName;
       
       const response = await organizationService.getAllInvoices(params);
-      console.log(response.data.data)
+      console.log('Invoice response:', response.data)
       
-      if (response.data.success) {
-        setInvoices(response.data.data);
-        setPagination(response.data.pagination);
+      if (response.data.status) {
+        setInvoices(response.data.data?.invoices || []);
+        // Set default pagination since backend doesn't return it yet
+        setPagination(response.data.data?.pagination || {
+          currentPage: page,
+          totalPages: Math.ceil((response.data.data?.invoices?.length || 0) / 50),
+          totalInvoices: response.data.data?.invoices?.length || 0,
+          hasNext: false,
+          hasPrev: false
+        });
       } else {
         setError('Failed to fetch invoices');
       }
@@ -122,8 +131,8 @@ export const Invoices: React.FC<InvoicesProps> = ({ onNavigate }) => {
     try {
       const response = await organizationService.getAgingSummary({});
       
-      if (response.data.success) {
-        setAgingSummary(response.data.summary);
+      if (response.data.status) {
+        setAgingSummary(response.data.data?.summary || null);
       } else {
         setError('Failed to fetch aging summary');
       }
@@ -180,6 +189,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ onNavigate }) => {
     setStartDate('');
     setEndDate('');
     setAccountNumber('');
+    setClientName('');
     fetchInvoices(1);
   };
 
@@ -193,6 +203,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ onNavigate }) => {
       if (startDate) params.startDate = startDate;
       if (endDate) params.endDate = endDate;
       if (accountNumber) params.accountNumber = accountNumber;
+      if (clientName) params.clientName = clientName;
       
       const response = await organizationService.exportInvoices(params);
       
@@ -215,34 +226,91 @@ export const Invoices: React.FC<InvoicesProps> = ({ onNavigate }) => {
   };
 
   const handleExportAgingSummary = async (format: 'csv' | 'pdf') => {
+    if (!agingSummary) return;
+    
     setExportingAging(true);
     try {
-      const params: Record<string, string> = { format };
-      
-      let response;
-      let blob;
-      let filename;
-      
       if (format === 'csv') {
-        response = await organizationService.exportAgingSummary(params);
-        blob = new Blob([response.data], { type: 'text/csv' });
-        filename = `aging_summary_${new Date().getTime()}.csv`;
+        const csvData = [
+          'Aging Summary Report',
+          `Generated on: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}`,
+          '',
+          'Age Range,Count,Amount Outstanding,Percentage of Total',
+          ...agingSummary.agingBuckets.map(bucket => 
+            `"${bucket.range}",${bucket.count},"KES ${bucket.totalAmount.toLocaleString()}","${bucket.percentage.toFixed(1)}%"`
+          ),
+          `"Total Outstanding",${agingSummary.agingBuckets.reduce((sum, bucket) => sum + bucket.count, 0)},"KES ${agingSummary.totalUnpaidAmount.toLocaleString()}","100.0%"`,
+          '',
+          'Notes:',
+          agingSummary.message || `Aging calculation starts after ${agingSummary.gracePeriodDays}-day grace period from due date`
+        ].join('\n');
+
+        const blob = new Blob([csvData], { type: 'text/csv' });
+        const filename = `aging_summary_export_${new Date().getTime()}.csv`;
+        
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
       } else {
-        // For PDF export, we'll generate it client-side using the aging summary data
-        response = await generateAgingSummaryPDF(agingSummary);
-        blob = response;
-        filename = `aging_summary_report_${new Date().getTime()}.txt`;
+        // Generate PDF using jsPDF
+        const { jsPDF } = await import('jspdf');
+        const doc = new jsPDF();
+        
+        // Title
+        doc.setFontSize(18);
+        doc.text('Aging Summary Report', 20, 20);
+        
+        // Date
+        doc.setFontSize(10);
+        doc.text(`Generated on: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}`, 20, 30);
+        
+        // Summary stats
+        doc.setFontSize(12);
+        doc.text('Summary Statistics:', 20, 45);
+        doc.setFontSize(10);
+        doc.text(`Total Overdue Invoices: ${agingSummary.agingBuckets.reduce((sum, bucket) => sum + bucket.count, 0)}`, 20, 55);
+        doc.text(`Total Outstanding Amount: KES ${agingSummary.totalUnpaidAmount.toLocaleString()}`, 20, 65);
+        
+        // Table headers
+        doc.setFontSize(12);
+        doc.text('Age Bucket Breakdown:', 20, 80);
+        doc.setFontSize(10);
+        doc.text('Age Range', 20, 95);
+        doc.text('Count', 80, 95);
+        doc.text('Amount Outstanding', 110, 95);
+        doc.text('% of Total', 160, 95);
+        
+        // Table data
+        let yPos = 105;
+        agingSummary.agingBuckets.forEach(bucket => {
+          doc.text(bucket.range, 20, yPos);
+          doc.text(bucket.count.toString(), 80, yPos);
+          doc.text(`KES ${bucket.totalAmount.toLocaleString()}`, 110, yPos);
+          doc.text(`${bucket.percentage.toFixed(1)}%`, 160, yPos);
+          yPos += 10;
+        });
+        
+        // Total row
+        yPos += 5;
+        doc.setFontSize(11);
+        doc.text('Total Outstanding', 20, yPos);
+        doc.text(agingSummary.agingBuckets.reduce((sum, bucket) => sum + bucket.count, 0).toString(), 80, yPos);
+        doc.text(`KES ${agingSummary.totalUnpaidAmount.toLocaleString()}`, 110, yPos);
+        doc.text('100.0%', 160, yPos);
+        
+        // Notes
+        yPos += 20;
+        doc.setFontSize(10);
+        doc.text('Notes:', 20, yPos);
+        doc.text(agingSummary.message || `Aging calculation starts after ${agingSummary.gracePeriodDays}-day grace period from due date`, 20, yPos + 10);
+        
+        doc.save(`aging_summary_${new Date().getTime()}.pdf`);
       }
-      
-      // Create and trigger download
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
       
       setShowExportDropdown(false);
     } catch (error) {
@@ -378,7 +446,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ onNavigate }) => {
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                     </svg>
-                    Export as Report
+                    Export as PDF
                   </button>
                 </div>
               </div>
@@ -402,7 +470,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ onNavigate }) => {
           </div>
           <div className="p-4">
             <form onSubmit={handleFilterSubmit}>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Payment Status</label>
                   <select 
@@ -444,6 +512,16 @@ export const Invoices: React.FC<InvoicesProps> = ({ onNavigate }) => {
                     value={accountNumber} 
                     onChange={(e) => setAccountNumber(e.target.value)}
                     placeholder="e.g. RES158009"
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Client Name</label>
+                  <input 
+                    type="text" 
+                    value={clientName} 
+                    onChange={(e) => setClientName(e.target.value)}
+                    placeholder="e.g. John Doe"
                     className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
                   />
                 </div>

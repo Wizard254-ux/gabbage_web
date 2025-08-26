@@ -26,14 +26,29 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Add response interceptor for debugging
+// Add response interceptor for debugging and token refresh
 api.interceptors.response.use(
   (response) => {
     console.log('API Response:', response.status, response.config.url, response.data);
     return response;
   },
-  (error) => {
+  async (error) => {
     console.error('API Error:', error.response?.status, error.config?.url, error.response?.data);
+    
+    // Handle 401 errors (token expired) - but not for refresh-token endpoint to avoid infinite loop
+    if (error.response?.status === 401 && 
+        error.response?.data?.message === 'Invalid or expired token' &&
+        !error.config.url?.includes('/auth/refresh-token') &&
+        !error.config._retry) {
+      
+      error.config._retry = true; // Mark as retry to prevent infinite loop
+      
+      console.log('Token expired, redirecting to login...');
+      localStorage.removeItem('admin');
+      window.location.href = '/login';
+      return Promise.reject(error);
+    }
+    
     return Promise.reject(error);
   }
 );
@@ -128,9 +143,15 @@ export const organizationService = {
     return response.data;
   },
 
-  // List drivers
-  listDrivers: async () => {
-    const response = await api.get('/organization/drivers');
+  // List drivers with pagination and search
+  listDrivers: async (params = {}) => {
+    const queryParams = new URLSearchParams({
+      page: '1',
+      limit: '20',
+      search: '',
+      ...params
+    }).toString();
+    const response = await api.get(`/organization/drivers?${queryParams}`);
     return response;
   },
 
@@ -170,38 +191,59 @@ export const organizationService = {
     return response;
   },
 
-  // Routes management
-  getAllRoutes: async () => {
-    console.log('🛣️ Fetching routes list...');
-    const response = await api.get('/organization/routes');
-    console.log('🛣️ Routes list response:', response.data);
+  // Routes management with pagination and search
+  getAllRoutes: async (params = {}) => {
+    const queryParams = new URLSearchParams({
+      page: '1',
+      limit: '20',
+      search: '',
+      ...params
+    }).toString();
+    console.log('🛣️ Fetching routes with params:', params);
+    const response = await api.get(`/organization/routes?${queryParams}`);
+    console.log('🛣️ Routes response:', response.data);
     return response;
   },
 
   createRoute: async (data) => {
+    console.log('🛣️ Creating route with data:', data);
     const response = await api.post('/organization/routes', data);
+    console.log('🛣️ Route creation response:', response.data);
     return response;
   },
 
   getRouteDetails: async (routeId) => {
+    console.log('🛣️ Fetching route details for ID:', routeId);
     const response = await api.get(`/organization/routes/${routeId}`);
+    console.log('🛣️ Route details response:', response.data);
     return response;
   },
 
   updateRoute: async (routeId, data) => {
+    console.log('🛣️ Updating route ID:', routeId, 'with data:', data);
     const response = await api.put(`/organization/routes/${routeId}`, data);
+    console.log('🛣️ Route update response:', response.data);
     return response;
   },
 
   deleteRoute: async (routeId) => {
+    console.log('🛣️ Deleting route ID:', routeId);
     const response = await api.delete(`/organization/routes/${routeId}`);
+    console.log('🛣️ Route deletion response:', response.data);
     return response;
   },
 
   // Client management
-  listClients: async () => {
-    console.log('👥 Fetching clients list...');
-    const response = await api.get('/organization/clients');
+  // List clients with pagination and search
+  listClients: async (params = {}) => {
+    const queryParams = new URLSearchParams({
+      page: '1',
+      limit: '20',
+      search: '',
+      ...params
+    }).toString();
+    console.log('👥 Fetching clients list with params:', params);
+    const response = await api.get(`/organization/clients?${queryParams}`);
     console.log('👥 Clients list response:', response.data);
     return response;
   },
@@ -226,7 +268,7 @@ export const organizationService = {
 
   editClient: async (clientId, data) => {
     console.log('✏️ Editing client ID:', clientId, 'with data:', data);
-    const response = await api.put(`/organization/clients/${clientId}`, data);
+    const response = await api.post(`/organization/clients/${clientId}`, data);
     console.log('✏️ Client edit response:', response.data);
     return response;
   },
@@ -275,10 +317,10 @@ export const organizationService = {
   },
 
   // Dashboard endpoints
-  getOrganizationStats: async () => {
-    console.log('📊 Fetching organization dashboard stats...');
-    const response = await api.get('/organization/dashboard/stats');
-    console.log('📊 Organization dashboard stats response:', response.data);
+  getDashboardCounts: async () => {
+    console.log('📊 Fetching optimized dashboard counts...');
+    const response = await api.get('/organization/dashboard/counts');
+    console.log('📊 Dashboard counts response:', response.data);
     return response;
   },
 
@@ -318,5 +360,216 @@ export const organizationService = {
       }
     }
     return documentUrl;
+  },
+
+  // Invoice management
+  getAllInvoices: async (params = {}) => {
+    console.log('🧾 Fetching all invoices with params:', params);
+    const response = await api.get('/organization/invoices', { params });
+    console.log('🧾 All invoices response:', response.data);
+    return response;
+  },
+
+  createInvoice: async (data) => {
+    console.log('🧾 Creating invoice with data:', data);
+    const response = await api.post('/organization/invoices', data);
+    console.log('🧾 Invoice creation response:', response.data);
+    return response;
+  },
+
+  getInvoiceDetails: async (invoiceId) => {
+    console.log('🧾 Fetching invoice details for ID:', invoiceId);
+    const response = await api.get(`/organization/invoices/${invoiceId}`);
+    console.log('🧾 Invoice details response:', response.data);
+    return response;
+  },
+
+  resendInvoices: async (invoiceIds) => {
+    console.log('📧 Resending invoices:', invoiceIds);
+    const response = await api.post('/organization/invoices/resend', { invoice_ids: invoiceIds });
+    console.log('📧 Resend invoices response:', response.data);
+    return response;
+  },
+
+  exportInvoices: async (params) => {
+    console.log('📊 Exporting invoices with params:', params);
+    const response = await api.get('/organization/invoices/export', { 
+      params,
+      responseType: 'blob'
+    });
+    console.log('📊 Export invoices response received');
+    return response;
+  },
+
+  getAgingSummary: async (params) => {
+    console.log('📈 Fetching aging summary with params:', params);
+    const response = await api.get('/organization/invoices/aging-summary', { params });
+    console.log('📈 Aging summary response:', response.data);
+    return response;
+  },
+
+  exportAgingSummary: async (params) => {
+    console.log('📊 Exporting aging summary with params:', params);
+    const response = await api.get('/organization/invoices/aging-summary/export', { 
+      params,
+      responseType: 'blob'
+    });
+    console.log('📊 Export aging summary response received');
+    return response;
+  },
+
+
+
+  // Payment management
+  getAllPaymentHistory: async (params = {}) => {
+    console.log('💰 Fetching all payment history with params:', params);
+    const response = await api.get('/organization/payments', { params });
+    console.log('💰 All payment history response:', response.data);
+    return response;
+  },
+
+  getPaymentHistory: async (accountNumber, params = {}) => {
+    console.log('💰 Fetching payment history for account:', accountNumber, 'params:', params);
+    const response = await api.get(`/organization/payments/account/${accountNumber}`, { params });
+    console.log('💰 Payment history response:', response.data);
+    return response;
+  },
+
+  createCashPayment: async (data) => {
+    console.log('💵 Creating cash payment with data:', data);
+    const response = await api.post('/organization/payments/cash', data);
+    console.log('💵 Cash payment response:', response.data);
+    return response;
+  },
+
+  exportPayments: async (params) => {
+    console.log('📊 Exporting payments with params:', params);
+    const response = await api.get('/organization/payments/export', { 
+      params,
+      responseType: 'blob'
+    });
+    console.log('📊 Export payments response received');
+    return response;
+  },
+
+  getPaymentDetails: async (paymentId) => {
+    console.log('🔍 Fetching payment details for ID:', paymentId);
+    const response = await api.get(`/organization/payments/${paymentId}`);
+    console.log('🔍 Payment details response:', response.data);
+    return response;
+  },
+
+  // Pickup management
+  getPickups: async (params = {}) => {
+    console.log('📦 Fetching pickups with params:', params);
+    const response = await api.get('/organization/pickups', { params });
+    console.log('📦 Pickups response:', response.data);
+    return response;
+  },
+
+  getPickupRoutes: async () => {
+    console.log('🛣️ Fetching pickup routes...');
+    const response = await api.get('/organization/routes');
+    console.log('🛣️ Pickup routes response:', response.data);
+    return response;
+  },
+
+  getPickupDrivers: async () => {
+    console.log('🚛 Fetching pickup drivers...');
+    const response = await api.get('/organization/drivers');
+    console.log('🚛 Pickup drivers response:', response.data);
+    return response;
+  },
+
+  createWeeklyPickups: async () => {
+    console.log('📅 Creating weekly pickups...');
+    const response = await api.post('/organization/pickups/weekly');
+    console.log('📅 Weekly pickups response:', response.data);
+    return response;
+  },
+
+  updatePickupStatus: async (pickupId, data) => {
+    console.log('✏️ Updating pickup status for ID:', pickupId, 'with data:', data);
+    const response = await api.put(`/organization/pickups/${pickupId}`, data);
+    console.log('✏️ Pickup status update response:', response.data);
+    return response;
+  },
+
+  getClientsToPickup: async (params = {}) => {
+    console.log('👥 Fetching clients to pickup with params:', params);
+    const response = await api.get('/organization/pickups/clients', { params });
+    console.log('👥 Clients to pickup response:', response.data);
+    return response;
+  },
+
+  createPickup: async (data) => {
+    console.log('📦 Creating pickup with data:', data);
+    const response = await api.post('/organization/pickups', data);
+    console.log('📦 Create pickup response:', response.data);
+    return response;
+  },
+
+  searchClients: async (params) => {
+    console.log('🔍 Searching clients with params:', params);
+    const response = await api.get('/organization/clients/search', { params });
+    console.log('🔍 Search clients response:', response.data);
+    return response;
+  },
+
+  // Bag management
+  getOrganizationBags: async (params = {}) => {
+    console.log('🎒 Fetching organization bags overview with params:', params);
+    const response = await api.get('/organization/bags', { params });
+    console.log('🎒 Organization bags response:', response.data);
+    return response;
+  },
+
+  addBags: async (data) => {
+    console.log('➕ Adding bags to inventory:', data);
+    const response = await api.post('/organization/bags/add', data);
+    console.log('➕ Add bags response:', response.data);
+    return response;
+  },
+
+  removeBags: async (data) => {
+    console.log('➖ Removing bags from inventory:', data);
+    const response = await api.post('/organization/bags/remove', data);
+    console.log('➖ Remove bags response:', response.data);
+    return response;
+  },
+
+  allocateBags: async (data) => {
+    console.log('🚛 Allocating bags to driver:', data);
+    const response = await api.post('/organization/bags/allocate', data);
+    console.log('🚛 Allocate bags response:', response.data);
+    return response;
+  },
+
+  getBagDistributionHistory: async (params = {}) => {
+    console.log('📋 Fetching bag distribution history with params:', params);
+    const response = await api.get('/organization/bags/issues/list', { params });
+    console.log('📋 Bag distribution history response:', response.data);
+    return response;
+  },
+
+  processBagReturn: async (data) => {
+    console.log('🔄 Processing bag return with data:', data);
+    const response = await api.post('/organization/bags/process-return', data);
+    console.log('🔄 Process bag return response:', response.data);
+    return response;
+  },
+
+  toggleClientStatus: async (clientId: string | number, isActive: boolean) => {
+    console.log('🔄 Toggling client status:', { clientId, isActive });
+    const response = await api.post(`/organization/clients/${clientId}/toggle-status`, { isActive });
+    console.log('🔄 Toggle client status response:', response.data);
+    return response;
+  },
+
+  toggleDriverStatus: async (driverId: string | number, isActive: boolean) => {
+    console.log('🔄 Toggling driver status:', { driverId, isActive });
+    const response = await api.post(`/organization/drivers/${driverId}/toggle-status`, { isActive });
+    console.log('🔄 Toggle driver status response:', response.data);
+    return response;
   }
 };

@@ -21,7 +21,7 @@ export const Payments: React.FC = () => {
   const [accountNumber, setAccountNumber] = useState('');
   const [paymentHistory, setPaymentHistory] = useState<Payment[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(10);
+  const [itemsPerPage] = useState(50);
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
@@ -49,14 +49,20 @@ export const Payments: React.FC = () => {
     
     setLoading(true);
     try {
-      const response = await organizationService.getPaymentHistory(accountNumber, {
+      const response = await organizationService.getAllPaymentHistory({
         page,
-        limit: itemsPerPage
+        limit: 50,
+        search: accountNumber
       });
-      console.log(response.data.payments)
 
-      setPaymentHistory(response.data.payments || []);
-      setCurrentPage(page);
+      // Handle response format for search results
+      if (response.data.status) {
+        setPaymentHistory(response.data.data?.payments || []);
+        setCurrentPage(page);
+      } else {
+        console.error('Failed to fetch payment history');
+        setPaymentHistory([]);
+      }
     } catch (error) {
       console.error('Failed to fetch payment history:', error);
     } finally {
@@ -78,16 +84,23 @@ export const Payments: React.FC = () => {
     try {
       const response = await organizationService.getAllPaymentHistory({
         page,
-        limit: itemsPerPage
+        limit: 50
       });
       
-      if (response.data.success) {
-        console.log(response.data)
-        setPaymentHistory(response.data.data.payments || []);
-        setPagination(response.data.data.pagination);
+      // Handle new response format: {status: true, data: {payments: [], pagination: {}}}
+      if (response.data.status) {
+        console.log('Payment response:', response.data);
+        setPaymentHistory(response.data.data?.payments || []);
+        setPagination(response.data.data?.pagination || {
+          currentPage: 1,
+          totalPages: 1,
+          totalPayments: 0,
+          hasNext: false,
+          hasPrev: false
+        });
         setCurrentPage(page);
       } else {
-        console.error('Failed to fetch all payments: API returned success=false');
+        console.error('Failed to fetch all payments: API returned status=false');
       }
     } catch (error) {
       console.error('Failed to fetch all payments:', error);
@@ -163,7 +176,7 @@ export const Payments: React.FC = () => {
             <div className="flex-1">
               <input
                 type="text"
-                placeholder="Enter Account Number (e.g., RES123456)"
+                placeholder="Search by Account Number, Client Name, or Phone Number"
                 value={accountNumber}
                 onChange={(e) => setAccountNumber(e.target.value)}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors"

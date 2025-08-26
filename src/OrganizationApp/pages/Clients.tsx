@@ -132,6 +132,8 @@ export const Clients: React.FC = () => {
   const [showErrorSnackbar, setShowErrorSnackbar] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searching, setSearching] = useState(false);
   const [isDocumentEditMode, setIsDocumentEditMode] = useState(false);
   const [documentsToDelete, setDocumentsToDelete] = useState<string[]>([]);
   const [editDocumentsFiles, setEditDocumentsFiles] = useState<FileList | null>(null);
@@ -152,8 +154,85 @@ export const Clients: React.FC = () => {
   const [bagEndDate, setBagEndDate] = useState('');
   const [clientBags, setClientBags] = useState<any[]>([]);
   const [loadingBags, setLoadingBags] = useState(false);
-  const [deletingDocument, setDeletingDocument] = useState(false);
+  const [deletingDocuments, setDeletingDocuments] = useState<Set<string>>(new Set());
   const [loadingEdit, setLoadingEdit] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [clearing, setClearing] = useState(false);
+  const [showStatusDialog, setShowStatusDialog] = useState(false);
+  const [clientToToggle, setClientToToggle] = useState<Client | null>(null);
+  const [togglingStatus, setTogglingStatus] = useState(false);
+  const [showCreateInvoiceModal, setShowCreateInvoiceModal] = useState(false);
+  const [creatingInvoice, setCreatingInvoice] = useState(false);
+  const [invoiceFormData, setInvoiceFormData] = useState({
+    title: '',
+    amount: 0,
+    due_date: '',
+    description: ''
+  });
+
+  // Export functions
+  const exportToCSV = (data: any[], filename: string, headers: string[]) => {
+    const csvContent = [
+      headers.join(','),
+      ...data.map(row => headers.map(header => {
+        const value = row[header] || '';
+        return typeof value === 'string' && value.includes(',') ? `"${value}"` : value;
+      }).join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `${filename}_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleExportPayments = () => {
+    if (!clientPayments.length) {
+      alert('No payment data to export');
+      return;
+    }
+    
+    const headers = ['trans_time', 'amount', 'payment_method', 'phone_number', 'trans_id', 'status', 'allocated_amount', 'remaining_amount'];
+    const exportData = clientPayments.map(payment => ({
+      trans_time: new Date(payment.trans_time || payment.created_at).toLocaleString(),
+      amount: payment.amount,
+      payment_method: payment.payment_method,
+      phone_number: payment.phone_number,
+      trans_id: payment.trans_id,
+      status: payment.status,
+      allocated_amount: payment.allocated_amount,
+      remaining_amount: payment.remaining_amount
+    }));
+    
+    exportToCSV(exportData, `${selectedClient?.name}_payments`, headers);
+  };
+
+  const handleExportInvoices = () => {
+    if (!clientInvoices.length) {
+      alert('No invoice data to export');
+      return;
+    }
+    
+    const headers = ['invoice_number', 'created_at', 'due_date', 'amount', 'paid_amount', 'balance', 'payment_status'];
+    const exportData = clientInvoices.map(invoice => ({
+      invoice_number: invoice.invoice_number,
+      created_at: new Date(invoice.created_at).toLocaleDateString(),
+      due_date: new Date(invoice.due_date).toLocaleDateString(),
+      amount: invoice.amount,
+      paid_amount: invoice.paid_amount,
+      balance: (parseFloat(invoice.amount || '0') - parseFloat(invoice.paid_amount || '0')).toString(),
+      payment_status: invoice.payment_status
+    }));
+    
+    exportToCSV(exportData, `${selectedClient?.name}_invoices`, headers);
+  };
 
   // Functions to fetch client data
   const fetchClientPayments = async () => {
@@ -165,7 +244,7 @@ export const Clients: React.FC = () => {
         { page: paymentPage, limit: 10 }
       );
       console.log('Client payments response:', response.data);
-      setClientPayments(response.data.data.payments || []);
+      setClientPayments(response.data?.data?.payments || []);
       // setPaymentPagination(response.data.data.pagination || null);
     } catch (error) {
       console.error('Failed to fetch client payments:', error);
@@ -183,7 +262,8 @@ export const Clients: React.FC = () => {
         selectedClient.id,
         { page: invoicePage, limit: 10 }
       );
-      setClientInvoices(response.data.invoices || []);
+      console.log('Client invoices response:', response.data);
+      setClientInvoices(response.data.data.invoices || []);
       setInvoicePagination(response.data.pagination || null);
     } catch (error) {
       console.error('Failed to fetch client invoices:', error);
@@ -211,6 +291,35 @@ export const Clients: React.FC = () => {
       setClientBags([]);
     } finally {
       setLoadingBags(false);
+    }
+  };
+
+  const handleCreateInvoice = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedClient) return;
+
+    setCreatingInvoice(true);
+    try {
+      await organizationService.createInvoice({
+        title: invoiceFormData.title,
+        client_id: selectedClient.id,
+        amount: invoiceFormData.amount,
+        due_date: invoiceFormData.due_date,
+        description: invoiceFormData.description,
+        type: 'custom'
+      });
+
+      setShowCreateInvoiceModal(false);
+      setInvoiceFormData({ title: '', amount: 0, due_date: '', description: '' });
+      fetchClientInvoices();
+      setSuccessMessage('Invoice created successfully!');
+      setShowSuccessSnackbar(true);
+    } catch (error) {
+      console.error('Failed to create invoice:', error);
+      setErrorMessage('Failed to create invoice');
+      setShowErrorSnackbar(true);
+    } finally {
+      setCreatingInvoice(false);
     }
   };
 
@@ -251,9 +360,24 @@ export const Clients: React.FC = () => {
   const [documentsFiles, setDocumentsFiles] = useState<FileList | null>(null);
 
   useEffect(() => {
-    fetchClients();
+    fetchClients(1, ''); // Initial load with no search
     fetchRoutes();
   }, []);
+
+  // Handle manual search
+  const handleSearch = () => {
+    if (searchTerm.trim() !== searchQuery) {
+      setSearchQuery(searchTerm.trim());
+      fetchClients(1, searchTerm.trim(), true);
+    }
+  };
+
+  // Handle search input key press
+  const handleSearchKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  };
 
   // Auto-fetch when tabs are switched
   useEffect(() => {
@@ -296,15 +420,32 @@ export const Clients: React.FC = () => {
   }, [bagStartDate, bagEndDate]);
 
 
-  const fetchClients = async () => {
+  const fetchClients = async (page = 1, search = '', isSearching = false, showLoading = true) => {
     try {
-      const response = await organizationService.listClients();
+      if (isSearching) {
+        setSearching(true);
+      } else if (showLoading) {
+        setLoading(true);
+      }
+      
+      console.log('Fetching clients with params:', { page, search });
+      const response = await organizationService.listClients({
+        page: page.toString(),
+        limit: '20',
+        search
+      });
+      console.log('Clients API response:', response);
+      
       setClients(response.data.data?.users || []);
     } catch (error) {
       console.error('Failed to fetch clients:', error);
       setClients([]);
     } finally {
-      setLoading(false);
+      if (isSearching) {
+        setSearching(false);
+      } else if (showLoading) {
+        setLoading(false);
+      }
     }
   };
 
@@ -330,7 +471,8 @@ export const Clients: React.FC = () => {
 
   const handleEdit = async (client: Client) => {
     handleMenuClose();
-    setLoadingEdit(true);
+    
+    // Show dialog immediately with basic data
     setSelectedClient(client);
     setEditFormData({
       name: client.name,
@@ -347,14 +489,18 @@ export const Clients: React.FC = () => {
     });
     setDocumentsToDelete([]);
     setEditDocumentsFiles(null);
+    setShowEditModal(true);
+    setLoadingEdit(true);
 
+    // Fetch detailed data in background
     try {
       const response = await organizationService.getClientDetails(client.id || client.id || '');
       if (response.data && response.data.client) {
         const clientWithDocs = {
           ...client,
           ...response.data.client,
-          documents: response.data.client.documents || []
+          ...response.data.client.user,
+          documents: response.data.client.user?.documents || []
         };
         setSelectedClient(clientWithDocs);
       }
@@ -363,8 +509,6 @@ export const Clients: React.FC = () => {
     } finally {
       setLoadingEdit(false);
     }
-
-    setShowEditModal(true);
   };
 
   const handleViewDetails = async (client: Client) => {
@@ -385,12 +529,15 @@ export const Clients: React.FC = () => {
 
     try {
       const response = await organizationService.getClientDetails(client.id || client.id || '');
+      console.log('🔍 Client details response:', response.data);
       if (response.data && response.data.client) {
         const clientWithDocs = {
           ...client,
           ...response.data.client,
-          documents: response.data.client.documents || []
+          ...response.data.client.user,
+          documents: response.data.client.user?.documents || []
         };
+        console.log('📄 Final client with docs:', clientWithDocs);
         setSelectedClient(clientWithDocs);
       }
     } catch (error) {
@@ -404,6 +551,12 @@ export const Clients: React.FC = () => {
     e.preventDefault();
     if (!selectedClient) return;
 
+    console.log('🔄 Starting client update...');
+    console.log('📋 Edit form data:', editFormData);
+    console.log('👤 Selected client:', selectedClient);
+    console.log('🗑️ Documents to delete:', documentsToDelete);
+    console.log('📎 New documents files:', editDocumentsFiles);
+
     setUpdatingClient(true);
     try {
       const formData = new FormData();
@@ -411,7 +564,7 @@ export const Clients: React.FC = () => {
       formData.append('email', editFormData.email);
       formData.append('phone', editFormData.phone);
       formData.append('address', editFormData.address);
-      formData.append('route', editFormData.route);
+      formData.append('route', typeof editFormData.route === 'object' ? editFormData.route?.id || '' : editFormData.route);
       formData.append('isActive', editFormData.isActive.toString());
       formData.append('clientType', editFormData.clientType);
       formData.append('monthlyRate', editFormData.monthlyRate.toString());
@@ -430,7 +583,16 @@ export const Clients: React.FC = () => {
       }
 
       // Use client edit endpoint that supports documents
-      await organizationService.editClient(selectedClient.id || selectedClient.id || '', editFormData);
+      formData.append('_method', 'PUT');
+      
+      console.log('📤 FormData contents:');
+      for (let [key, value] of formData.entries()) {
+        console.log(`${key}:`, value);
+      }
+      
+      console.log('🌐 Making API call to update client...');
+      const response = await organizationService.editClient(selectedClient.id || selectedClient.id || '', formData);
+      console.log('✅ Update response:', response);
 
       setShowEditModal(false);
       setSelectedClient(null);
@@ -441,38 +603,50 @@ export const Clients: React.FC = () => {
       setSuccessMessage('Client updated successfully!');
       setShowSuccessSnackbar(true);
     } catch (error) {
-      console.error('Failed to update client:', error);
+      console.error('❌ Failed to update client:', error);
     } finally {
       setUpdatingClient(false);
     }
   };
 
-  const handleDelete = async (client: Client) => {
+  const handleDelete = (client: Client) => {
     handleMenuClose();
-    if (window.confirm('Are you sure you want to delete this client?')) {
-      try {
-        await organizationService.deleteClient(client.id || client.id || '');
-        fetchClients();
-        setSuccessMessage('Client deleted successfully!');
-        setShowSuccessSnackbar(true);
-      } catch (error) {
-        console.error('Failed to delete client:', error);
-      }
+    setClientToDelete(client);
+    setShowDeleteDialog(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!clientToDelete) return;
+    
+    setDeleting(true);
+    try {
+      await organizationService.deleteClient(clientToDelete.id || clientToDelete.id || '');
+      
+      // Remove client from current list without reloading
+      setClients(prev => prev.filter(c => c.id !== clientToDelete.id));
+      
+      setSuccessMessage('Client deleted successfully!');
+      setShowSuccessSnackbar(true);
+      setShowDeleteDialog(false);
+      setClientToDelete(null);
+    } catch (error) {
+      console.error('Failed to delete client:', error);
+    } finally {
+      setDeleting(false);
     }
   };
 
   const handleDeleteDocument = async (clientId: string, documentPath: string) => {
     if (window.confirm('Are you sure you want to delete this document?')) {
-      setDeletingDocument(true);
+      setDeletingDocuments(prev => new Set(prev).add(documentPath));
       try {
         await organizationService.deleteClientDocument(clientId, documentPath);
 
-        const response = await organizationService.getClientDetails(clientId);
-        if (response.data && response.data.client && selectedClient) {
+        // Update UI immediately
+        if (selectedClient) {
           const updatedClient = {
             ...selectedClient,
-            ...response.data.client,
-            documents: response.data.client.documents || []
+            documents: selectedClient.documents?.filter(doc => doc !== documentPath) || []
           };
           setSelectedClient(updatedClient);
         }
@@ -483,7 +657,11 @@ export const Clients: React.FC = () => {
         console.error('Failed to delete document:', error);
         alert('Failed to delete document');
       } finally {
-        setDeletingDocument(false);
+        setDeletingDocuments(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(documentPath);
+          return newSet;
+        });
       }
     }
   };
@@ -492,7 +670,7 @@ export const Clients: React.FC = () => {
     if (!selectedClient) return;
 
     if (window.confirm('Are you sure you want to delete this document permanently?')) {
-      setDeletingDocument(true);
+      setDeletingDocuments(prev => new Set(prev).add(documentPath));
       try {
         await organizationService.deleteClientDocument(selectedClient.id, documentPath);
 
@@ -509,7 +687,11 @@ export const Clients: React.FC = () => {
         console.error('Error deleting document:', error);
         alert('Failed to delete document');
       } finally {
-        setDeletingDocument(false);
+        setDeletingDocuments(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(documentPath);
+          return newSet;
+        });
       }
     }
   };
@@ -525,16 +707,27 @@ export const Clients: React.FC = () => {
         formData.append('documents', newDocumentsFiles[i]);
       }
 
-      // Use similar approach as drivers - this endpoint may need to be created
-      await organizationService.editClientWithDocuments?.(selectedClient.id || selectedClient.id || '', formData);
+       const updateFormData = new FormData();
+      for (let i = 0; i < newDocumentsFiles.length; i++) {
+        updateFormData.append('documents', newDocumentsFiles[i]);
+      }
 
+      // Use the client update endpoint with documents
+      formData.append('_method', 'PUT');
+      await organizationService.editClient(selectedClient.id || selectedClient.id || '', formData);
+
+      // Fetch fresh data to get new document URLs
       const response = await organizationService.getClientDetails(selectedClient.id || selectedClient.id || '');
-      if (response.data && response.data.client) {
+      console.log('📝 After adding docs response:', response.data);
+      if (response.data && response.data.data.client) {
+        console.log('were in here');
         const updatedClient = {
           ...selectedClient,
-          ...response.data.client,
-          documents: response.data.client.documents || []
+          ...response.data.data.client,
+          ...response.data.data.client.user,
+          documents: response.data.data.client.user?.documents || []
         };
+        console.log('📝 Updated client with new docs:', updatedClient);
         setSelectedClient(updatedClient);
       }
 
@@ -578,7 +771,42 @@ export const Clients: React.FC = () => {
         }
       }
 
-      await organizationService.createClientWithMultipart(formData);
+      const result = await organizationService.createClientWithMultipart(formData);
+      console.log('➕ Client creation response:', result);
+      
+      if (result?.data?.status && result?.data?.data?.client) {
+        const newClient = result.data.data.client;
+        console.log('📝 New client data:', newClient);
+        
+        // Transform to match the expected Client interface format
+        const clientData: Client = {
+          id: newClient.id,
+          name: newClient.name,
+          email: newClient.email,
+          phone: newClient.phone,
+          address: newClient.address,
+          isActive: newClient.isActive ? 1 : 0,
+          accountNumber: newClient.accountNumber,
+          clientType: newClient.clientType,
+          monthlyRate: newClient.monthlyRate,
+          numberOfUnits: newClient.numberOfUnits,
+          pickUpDay: newClient.pickUpDay,
+          gracePeriod: newClient.gracePeriod,
+          serviceStartDate: newClient.serviceStartDate,
+          route: newClient.route,
+          documents: newClient.documents || []
+        };
+        
+        console.log('✅ Transformed client data:', clientData);
+        
+        // Add to the beginning of the current list (newest clients first)
+        setClients(prev => {
+          const updatedClients = [clientData, ...prev];
+          console.log('📋 Updated clients list:', updatedClients);
+          return updatedClients;
+        });
+      }
+      
       setShowAddModal(false);
       setAddFormData({
         name: '',
@@ -596,7 +824,6 @@ export const Clients: React.FC = () => {
         pickUpDay: 'wednesday',
       });
       setDocumentsFiles(null);
-      await fetchClients();
 
       setSuccessMessage('Client added successfully!');
       setShowSuccessSnackbar(true);
@@ -616,12 +843,7 @@ export const Clients: React.FC = () => {
     }
   };
 
-  const filteredClients = clients.filter(client =>
-    client.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    client.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    client.phone?.includes(searchTerm) ||
-    client.address?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Removed frontend filtering - now handled by backend
 
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
@@ -682,19 +904,47 @@ export const Clients: React.FC = () => {
         <CardContent>
           <Grid container spacing={3} alignItems="center">
             <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                placeholder="Search clients..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon />
-                    </InputAdornment>
-                  ),
-                }}
-              />
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <TextField
+                  fullWidth
+                  placeholder="Search clients..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onKeyPress={handleSearchKeyPress}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+                <Button
+                  variant="contained"
+                  onClick={handleSearch}
+                  disabled={searching}
+                  sx={{ minWidth: '100px' }}
+                >
+                  {searching ? <CircularProgress size={20} /> : 'Search'}
+                </Button>
+                <Button
+                  variant="outlined"
+                  onClick={async () => {
+                    setSearchTerm('');
+                    setSearchQuery('');
+                    setClearing(true);
+                    try {
+                      await fetchClients(1, '', false, false); // Pass false for isSearching and showLoading
+                    } finally {
+                      setClearing(false);
+                    }
+                  }}
+                  disabled={searching || clearing}
+                  sx={{ minWidth: '80px' }}
+                >
+                  {clearing ? 'Clearing...' : 'Clear'}
+                </Button>
+              </Box>
             </Grid>
             <Grid item xs={12} md={6}>
               <Box sx={{ display: 'flex', gap: 3, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
@@ -735,7 +985,22 @@ export const Clients: React.FC = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {filteredClients.map((client, index) => (
+            {loading ? (
+              // Show loading skeletons
+              Array.from({ length: 5 }).map((_, index) => (
+                <TableRow key={`skeleton-${index}`}>
+                  <TableCell><div style={{ height: '20px', backgroundColor: '#f0f0f0', borderRadius: '4px' }}></div></TableCell>
+                  <TableCell><div style={{ height: '40px', backgroundColor: '#f0f0f0', borderRadius: '4px' }}></div></TableCell>
+                  <TableCell><div style={{ height: '20px', backgroundColor: '#f0f0f0', borderRadius: '4px' }}></div></TableCell>
+                  <TableCell><div style={{ height: '20px', backgroundColor: '#f0f0f0', borderRadius: '4px' }}></div></TableCell>
+                  <TableCell><div style={{ height: '20px', backgroundColor: '#f0f0f0', borderRadius: '4px' }}></div></TableCell>
+                  <TableCell><div style={{ height: '20px', backgroundColor: '#f0f0f0', borderRadius: '4px' }}></div></TableCell>
+                  <TableCell><div style={{ height: '20px', backgroundColor: '#f0f0f0', borderRadius: '4px' }}></div></TableCell>
+                  <TableCell><div style={{ height: '20px', backgroundColor: '#f0f0f0', borderRadius: '4px' }}></div></TableCell>
+                </TableRow>
+              ))
+            ) : (
+              clients.map((client, index) => (
               <TableRow
                 key={client.id}
                 hover
@@ -827,11 +1092,12 @@ export const Clients: React.FC = () => {
                   </IconButton>
                 </TableCell>
               </TableRow>
-            ))}
+              ))
+            )}
           </TableBody>
         </Table>
 
-        {filteredClients.length === 0 && (
+        {clients.length === 0 && !loading && (
           <Box sx={{ textAlign: 'center', py: 8 }}>
             <PersonIcon sx={{ fontSize: 48, color: 'grey.400', mb: 2 }} />
             <Typography variant="h6" color="text.secondary" gutterBottom>
@@ -858,9 +1124,22 @@ export const Clients: React.FC = () => {
           <VisibilityIcon sx={{ mr: 2, fontSize: 20 }} />
           View Details
         </MenuItem>
-        <MenuItem onClick={() => menuClient && handleEdit(menuClient)} disabled={loadingEdit}>
-          {loadingEdit ? <CircularProgress size={20} sx={{ mr: 2 }} /> : <EditIcon sx={{ mr: 2, fontSize: 20 }} />}
-          {loadingEdit ? 'Loading...' : 'Edit'}
+        <MenuItem onClick={() => menuClient && handleEdit(menuClient)}>
+          <EditIcon sx={{ mr: 2, fontSize: 20 }} />
+          Edit
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            if (menuClient) {
+              setClientToToggle(menuClient);
+              setShowStatusDialog(true);
+              handleMenuClose();
+            }
+          }}
+          sx={{ color: 'primary.main' }}
+        >
+          {menuClient?.isActive === 1 ? <CancelIcon sx={{ mr: 2, fontSize: 20 }} /> : <CheckCircleIcon sx={{ mr: 2, fontSize: 20 }} />}
+          {menuClient?.isActive === 1 ? 'Deactivate' : 'Activate'}
         </MenuItem>
         <MenuItem
           onClick={() => menuClient && handleDelete(menuClient)}
@@ -1404,17 +1683,27 @@ export const Clients: React.FC = () => {
           <Box sx={{ display: 'flex', gap: 1, ml: 'auto' }}>
             <IconButton
               size="small"
-              href={doc}
-              target="_blank"
-              rel="noopener noreferrer"
+              onClick={() => window.open(organizationService.getSecureDocumentUrl(doc), '_blank')}
               sx={{ color: 'primary.main' }}
             >
               <VisibilityIcon />
             </IconButton>
             <IconButton
               size="small"
-              href={doc}
-              download={fileName}
+              onClick={async () => {
+                try {
+                  const response = await fetch(organizationService.getSecureDocumentUrl(doc));
+                  const blob = await response.blob();
+                  const url = window.URL.createObjectURL(blob);
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.download = fileName;
+                  link.click();
+                  window.URL.revokeObjectURL(url);
+                } catch (error) {
+                  console.error('Download failed:', error);
+                }
+              }}
               sx={{ color: 'info.main' }}
             >
               <DownloadIcon />
@@ -1423,9 +1712,9 @@ export const Clients: React.FC = () => {
               size="small"
               onClick={() => handleDeleteDocumentInEditMode(doc)}
               color="error"
-              disabled={deletingDocument}
+              disabled={deletingDocuments.has(doc)}
             >
-              {deletingDocument ? <CircularProgress size={16} /> : <DeleteIcon />}
+              {deletingDocuments.has(doc) ? <CircularProgress size={16} /> : <DeleteIcon />}
             </IconButton>
           </Box>
         </ListItem>
@@ -1772,9 +2061,7 @@ export const Clients: React.FC = () => {
                                 <Button
                                   size="small"
                                   variant="outlined"
-                                  href={doc}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
+                                  onClick={() => window.open(organizationService.getSecureDocumentUrl(doc), '_blank')}
                                   startIcon={<VisibilityIcon />}
                                   sx={{ flex: 1, minWidth: 'auto' }}
                                 >
@@ -1783,8 +2070,20 @@ export const Clients: React.FC = () => {
                                 <Button
                                   size="small"
                                   variant="outlined"
-                                  href={doc}
-                                  download={fileName}
+                                  onClick={async () => {
+                                    try {
+                                      const response = await fetch(organizationService.getSecureDocumentUrl(doc));
+                                      const blob = await response.blob();
+                                      const url = window.URL.createObjectURL(blob);
+                                      const link = document.createElement('a');
+                                      link.href = url;
+                                      link.download = fileName;
+                                      link.click();
+                                      window.URL.revokeObjectURL(url);
+                                    } catch (error) {
+                                      console.error('Download failed:', error);
+                                    }
+                                  }}
                                   startIcon={<DownloadIcon />}
                                   sx={{ flex: 1, minWidth: 'auto' }}
                                 >
@@ -1796,11 +2095,11 @@ export const Clients: React.FC = () => {
                                     variant="outlined"
                                     color="error"
                                     onClick={() => handleDeleteDocument(selectedClient.id, doc)}
-                                    startIcon={deletingDocument ? <CircularProgress size={16} /> : <DeleteIcon />}
-                                    disabled={deletingDocument}
+                                    startIcon={deletingDocuments.has(doc) ? <CircularProgress size={16} /> : <DeleteIcon />}
+                                    disabled={deletingDocuments.has(doc)}
                                     sx={{ flex: 1, minWidth: 'auto' }}
                                   >
-                                    {deletingDocument ? 'Deleting...' : 'Delete'}
+                                    {deletingDocuments.has(doc) ? 'Deleting...' : 'Delete'}
                                   </Button>
                                 )}
                               </Box>
@@ -1879,6 +2178,8 @@ export const Clients: React.FC = () => {
                     variant="outlined"
                     startIcon={<DownloadIcon />}
                     size="small"
+                    onClick={handleExportPayments}
+                    disabled={!clientPayments.length}
                   >
                     Export
                   </Button>
@@ -1899,9 +2200,12 @@ export const Clients: React.FC = () => {
                             <TableCell sx={{ fontWeight: 'bold' }}>Date</TableCell>
                             <TableCell sx={{ fontWeight: 'bold' }}>Amount</TableCell>
                             <TableCell sx={{ fontWeight: 'bold' }}>Method</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold' }}>Phone</TableCell>
                             <TableCell sx={{ fontWeight: 'bold' }}>Receipt</TableCell>
                             <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
-                            <TableCell sx={{ fontWeight: 'bold' }}>Allocation</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold' }}>Invoices Processed</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold' }}>Allocated Amount</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold' }}>Remaining Amount</TableCell>
                           </TableRow>
                         </TableHead>
                         <TableBody>
@@ -1909,48 +2213,84 @@ export const Clients: React.FC = () => {
                             <TableRow key={payment.id || index} hover>
                               <TableCell>
                                 <Typography variant="body2">
-                                  {new Date(payment.createdAt).toLocaleDateString()}
+                                  {new Date(payment.trans_time || payment.created_at).toLocaleDateString()}
                                 </Typography>
                                 <Typography variant="caption" color="text.secondary">
-                                  {new Date(payment.createdAt).toLocaleTimeString()}
+                                  {new Date(payment.trans_time || payment.created_at).toLocaleTimeString()}
                                 </Typography>
                               </TableCell>
                               <TableCell>
                                 <Typography variant="body2" fontWeight="medium" color="success.main">
-                                  KSH {payment.amount?.toLocaleString() || 'N/A'}
+                                  KSH {parseFloat(payment.amount || '0').toLocaleString()}
                                 </Typography>
                               </TableCell>
                               <TableCell>
                                 <Chip 
-                                  label={payment.paymentMethod || 'Unknown'} 
+                                  label={payment.payment_method || 'Unknown'} 
                                   size="small" 
                                   variant="outlined"
-                                  color={payment.paymentMethod === 'mpesa' ? 'success' : 'default'}
+                                  color={payment.payment_method === 'mpesa' ? 'success' : 'default'}
                                 />
                               </TableCell>
                               <TableCell>
+                                <Typography variant="body2">
+                                  {payment.phone_number || 'N/A'}
+                                </Typography>
+                              </TableCell>
+                              <TableCell>
                                 <Typography variant="caption" sx={{ fontFamily: 'monospace' }}>
-                                  {payment.mpesaReceiptNumber || payment.transactionId || 'N/A'}
+                                  {payment.trans_id || 'N/A'}
                                 </Typography>
                               </TableCell>
                               <TableCell>
                                 <Chip 
-                                  label={payment.status || 'Unknown'} 
+                                  label={
+                                    payment.status === 'fully_allocated' ? 'Fully Allocated' :
+                                    payment.status === 'partially_allocated' ? 'Partially Allocated' :
+                                    payment.status === 'not_allocated' ? 'Not Allocated' :
+                                    payment.status || 'Unknown'
+                                  } 
                                   size="small"
-                                  color={payment.status === 'completed' ? 'success' : payment.status === 'pending' ? 'warning' : 'error'}
+                                  color={
+                                    payment.status === 'fully_allocated' ? 'success' : 
+                                    payment.status === 'partially_allocated' ? 'warning' : 
+                                    'error'
+                                  }
                                 />
                               </TableCell>
                               <TableCell>
                                 <Box>
-                                  <Typography variant="caption" color="text.secondary">
-                                    Allocated: KSH {payment.allocatedAmount?.toLocaleString() || '0'}
-                                  </Typography>
-                                  {payment.remainingAmount > 0 && (
-                                    <Typography variant="caption" color="warning.main" display="block">
-                                      Remaining: KSH {payment.remainingAmount?.toLocaleString()}
+                                  {payment.invoices_processed && payment.invoices_processed.length > 0 ? (
+                                    payment.invoices_processed.map((invoiceNumber, idx) => (
+                                      <Chip
+                                        key={idx}
+                                        label={invoiceNumber}
+                                        size="small"
+                                        variant="outlined"
+                                        color="primary"
+                                        sx={{ mr: 0.5, mb: 0.5 }}
+                                      />
+                                    ))
+                                  ) : (
+                                    <Typography variant="caption" color="text.secondary">
+                                      No invoices processed
                                     </Typography>
                                   )}
                                 </Box>
+                              </TableCell>
+                              <TableCell>
+                                <Typography variant="body2" fontWeight="medium" color="success.main">
+                                  KSH {parseFloat(payment.allocated_amount || '0').toLocaleString()}
+                                </Typography>
+                              </TableCell>
+                              <TableCell>
+                                <Typography 
+                                  variant="body2" 
+                                  fontWeight="medium" 
+                                  color={parseFloat(payment.remaining_amount || '0') > 0 ? 'warning.main' : 'text.secondary'}
+                                >
+                                  KSH {parseFloat(payment.remaining_amount || '0').toLocaleString()}
+                                </Typography>
                               </TableCell>
                             </TableRow>
                           ))}
@@ -2015,6 +2355,7 @@ export const Clients: React.FC = () => {
                       variant="outlined"
                       startIcon={<AddIcon />}
                       size="small"
+                      onClick={() => setShowCreateInvoiceModal(true)}
                     >
                       Create Invoice
                     </Button>
@@ -2022,6 +2363,8 @@ export const Clients: React.FC = () => {
                       variant="outlined"
                       startIcon={<DownloadIcon />}
                       size="small"
+                      onClick={handleExportInvoices}
+                      disabled={!clientInvoices.length}
                     >
                       Export
                     </Button>
@@ -2041,18 +2384,19 @@ export const Clients: React.FC = () => {
                         <TableHead>
                           <TableRow sx={{ bgcolor: 'grey.50' }}>
                             <TableCell sx={{ fontWeight: 'bold' }}>Invoice #</TableCell>
-                            <TableCell sx={{ fontWeight: 'bold' }}>Billing Period</TableCell>
                             <TableCell sx={{ fontWeight: 'bold' }}>Issue Date</TableCell>
                             <TableCell sx={{ fontWeight: 'bold' }}>Due Date</TableCell>
                             <TableCell sx={{ fontWeight: 'bold' }}>Total Amount</TableCell>
                             <TableCell sx={{ fontWeight: 'bold' }}>Amount Paid</TableCell>
                             <TableCell sx={{ fontWeight: 'bold' }}>Balance</TableCell>
-                            <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold' }}>Transaction IDs</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold' }}>Payment Status</TableCell>
                           </TableRow>
                         </TableHead>
                         <TableBody>
                           {clientInvoices.map((invoice, index) => {
-                            const isOverdue = new Date() > new Date(invoice.dueDate) && invoice.remainingBalance > 0;
+                            const remainingBalance = parseFloat(invoice.amount || '0') - parseFloat(invoice.paid_amount || '0');
+                            const isOverdue = new Date() > new Date(invoice.due_date) && remainingBalance > 0;
                             return (
                               <TableRow 
                                 key={invoice.id || index} 
@@ -2066,18 +2410,12 @@ export const Clients: React.FC = () => {
                               >
                                 <TableCell>
                                   <Typography variant="body2" fontWeight="medium">
-                                    {invoice.invoiceNumber || `INV-${invoice.id?.slice(-6)}`}
+                                    {invoice.invoice_number || `INV-${invoice.id}`}
                                   </Typography>
                                 </TableCell>
                                 <TableCell>
                                   <Typography variant="body2">
-                                    {new Date(invoice.billingPeriodStart).toLocaleDateString()} - 
-                                    {new Date(invoice.billingPeriodEnd).toLocaleDateString()}
-                                  </Typography>
-                                </TableCell>
-                                <TableCell>
-                                  <Typography variant="body2">
-                                    {new Date(invoice.issuedDate || invoice.createdAt).toLocaleDateString()}
+                                    {new Date(invoice.created_at).toLocaleDateString()}
                                   </Typography>
                                 </TableCell>
                                 <TableCell>
@@ -2086,45 +2424,65 @@ export const Clients: React.FC = () => {
                                     color={isOverdue ? 'error.main' : 'inherit'}
                                     fontWeight={isOverdue ? 'medium' : 'normal'}
                                   >
-                                    {new Date(invoice.dueDate).toLocaleDateString()}
+                                    {new Date(invoice.due_date).toLocaleDateString()}
                                     {isOverdue && (
                                       <Typography variant="caption" color="error.main" display="block">
-                                        {Math.ceil((new Date().getTime() - new Date(invoice.dueDate).getTime()) / (1000 * 60 * 60 * 24))} days overdue
+                                        {Math.ceil((new Date().getTime() - new Date(invoice.due_date).getTime()) / (1000 * 60 * 60 * 24))} days overdue
                                       </Typography>
                                     )}
                                   </Typography>
                                 </TableCell>
                                 <TableCell>
                                   <Typography variant="body2" fontWeight="medium">
-                                    KSH {invoice.totalAmount?.toLocaleString() || 'N/A'}
+                                    KSH {parseFloat(invoice.amount || '0').toLocaleString()}
                                   </Typography>
                                 </TableCell>
                                 <TableCell>
                                   <Typography variant="body2" color="success.main">
-                                    KSH {invoice.amountPaid?.toLocaleString() || '0'}
+                                    KSH {parseFloat(invoice.paid_amount || '0').toLocaleString()}
                                   </Typography>
                                 </TableCell>
                                 <TableCell>
                                   <Typography 
                                     variant="body2" 
                                     fontWeight="medium"
-                                    color={invoice.remainingBalance > 0 ? 'error.main' : 'success.main'}
+                                    color={(parseFloat(invoice.amount || '0') - parseFloat(invoice.paid_amount || '0')) > 0 ? 'error.main' : 'success.main'}
                                   >
-                                    KSH {invoice.remainingBalance?.toLocaleString() || '0'}
+                                    KSH {(parseFloat(invoice.amount || '0') - parseFloat(invoice.paid_amount || '0')).toLocaleString()}
                                   </Typography>
+                                </TableCell>
+                                <TableCell>
+                                  <Box>
+                                    {invoice.transaction_ids && invoice.transaction_ids.length > 0 ? (
+                                      invoice.transaction_ids.map((transId, idx) => (
+                                        <Chip
+                                          key={idx}
+                                          label={transId}
+                                          size="small"
+                                          variant="outlined"
+                                          color="info"
+                                          sx={{ mr: 0.5, mb: 0.5, fontFamily: 'monospace', fontSize: '0.75rem' }}
+                                        />
+                                      ))
+                                    ) : (
+                                      <Typography variant="caption" color="text.secondary">
+                                        No payments
+                                      </Typography>
+                                    )}
+                                  </Box>
                                 </TableCell>
                                 <TableCell>
                                   <Chip 
                                     label={
-                                      invoice.paymentStatus === 'fully_paid' ? 'Paid' :
-                                      invoice.paymentStatus === 'partially_paid' ? 'Partial' :
-                                      invoice.paymentStatus === 'unpaid' ? 'Unpaid' :
-                                      invoice.status || 'Unknown'
+                                      invoice.payment_status === 'fully_paid' ? 'Paid' :
+                                      invoice.payment_status === 'partially_paid' ? 'Partial' :
+                                      invoice.payment_status === 'unpaid' ? 'Unpaid' :
+                                      invoice.payment_status || 'Unknown'
                                     }
                                     size="small"
                                     color={
-                                      invoice.paymentStatus === 'fully_paid' ? 'success' :
-                                      invoice.paymentStatus === 'partially_paid' ? 'warning' :
+                                      invoice.payment_status === 'fully_paid' ? 'success' :
+                                      invoice.payment_status === 'partially_paid' ? 'warning' :
                                       'error'
                                     }
                                   />
@@ -2143,25 +2501,25 @@ export const Clients: React.FC = () => {
                           <Grid item xs={6} md={3}>
                             <Typography variant="caption" color="text.secondary">Total Invoiced</Typography>
                             <Typography variant="h6">
-                              KSH {clientInvoices.reduce((sum, inv) => sum + (inv.totalAmount || 0), 0).toLocaleString()}
+                              KSH {clientInvoices.reduce((sum, inv) => sum + parseFloat(inv.amount || '0'), 0).toLocaleString()}
                             </Typography>
                           </Grid>
                           <Grid item xs={6} md={3}>
                             <Typography variant="caption" color="text.secondary">Total Paid</Typography>
                             <Typography variant="h6" color="success.main">
-                              KSH {clientInvoices.reduce((sum, inv) => sum + (inv.amountPaid || 0), 0).toLocaleString()}
+                              KSH {clientInvoices.reduce((sum, inv) => sum + parseFloat(inv.paid_amount || '0'), 0).toLocaleString()}
                             </Typography>
                           </Grid>
                           <Grid item xs={6} md={3}>
                             <Typography variant="caption" color="text.secondary">Outstanding Balance</Typography>
                             <Typography variant="h6" color="error.main">
-                              KSH {clientInvoices.reduce((sum, inv) => sum + (inv.remainingBalance || 0), 0).toLocaleString()}
+                              KSH {clientInvoices.reduce((sum, inv) => sum + (parseFloat(inv.amount || '0') - parseFloat(inv.paid_amount || '0')), 0).toLocaleString()}
                             </Typography>
                           </Grid>
                           <Grid item xs={6} md={3}>
                             <Typography variant="caption" color="text.secondary">Overdue Invoices</Typography>
                             <Typography variant="h6" color="warning.main">
-                              {clientInvoices.filter(inv => new Date() > new Date(inv.dueDate) && inv.remainingBalance > 0).length}
+                              {clientInvoices.filter(inv => new Date() > new Date(inv.due_date) && (parseFloat(inv.amount || '0') - parseFloat(inv.paid_amount || '0')) > 0).length}
                             </Typography>
                           </Grid>
                         </Grid>
@@ -2513,6 +2871,227 @@ export const Clients: React.FC = () => {
           {successMessage}
         </Alert>
       </Snackbar>
+
+      {/* Create Invoice Dialog */}
+      <Dialog
+        open={showCreateInvoiceModal}
+        onClose={() => setShowCreateInvoiceModal(false)}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            overflow: 'hidden'
+          }
+        }}
+      >
+        <DialogTitle
+          sx={{
+            background: 'linear-gradient(45deg, #2196F3 30%, #1976D2 90%)',
+            color: 'white',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            p: 3
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <ReceiptIcon sx={{ fontSize: 28 }} />
+            <Typography variant="h5" fontWeight="bold">
+              Create Invoice
+            </Typography>
+          </Box>
+          <IconButton
+            onClick={() => setShowCreateInvoiceModal(false)}
+            sx={{ color: 'white' }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <form onSubmit={handleCreateInvoice}>
+          <DialogContent sx={{ p: 4, bgcolor: 'grey.50' }}>
+            <Card sx={{ boxShadow: 2 }}>
+              <CardContent sx={{ p: 3 }}>
+                <Grid container spacing={3}>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="Invoice Title"
+                      value={invoiceFormData.title}
+                      onChange={(e) => setInvoiceFormData({ ...invoiceFormData, title: e.target.value })}
+                      required
+                      variant="outlined"
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <DescriptionIcon color="action" />
+                          </InputAdornment>
+                        ),
+                      }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Amount (KSH)"
+                      type="number"
+                      value={invoiceFormData.amount}
+                      onChange={(e) => setInvoiceFormData({ ...invoiceFormData, amount: parseFloat(e.target.value) || 0 })}
+                      required
+                      variant="outlined"
+                      inputProps={{ min: 0, step: 0.01 }}
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <PaymentIcon color="action" />
+                          </InputAdornment>
+                        ),
+                      }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Due Date"
+                      type="date"
+                      value={invoiceFormData.due_date}
+                      onChange={(e) => setInvoiceFormData({ ...invoiceFormData, due_date: e.target.value })}
+                      required
+                      variant="outlined"
+                      InputLabelProps={{ shrink: true }}
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <CalendarIcon color="action" />
+                          </InputAdornment>
+                        ),
+                      }}
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="Description"
+                      multiline
+                      rows={4}
+                      value={invoiceFormData.description}
+                      onChange={(e) => setInvoiceFormData({ ...invoiceFormData, description: e.target.value })}
+                      variant="outlined"
+                      placeholder="Enter invoice description or notes..."
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start" sx={{ alignSelf: 'flex-start', mt: 1 }}>
+                            <DescriptionIcon color="action" />
+                          </InputAdornment>
+                        ),
+                      }}
+                    />
+                  </Grid>
+                </Grid>
+              </CardContent>
+            </Card>
+          </DialogContent>
+          <DialogActions sx={{ p: 4, bgcolor: 'white', borderTop: '1px solid #e0e0e0' }}>
+            <Button
+              onClick={() => setShowCreateInvoiceModal(false)}
+              disabled={creatingInvoice}
+              variant="outlined"
+              size="large"
+              sx={{ px: 4 }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="contained"
+              disabled={creatingInvoice}
+              startIcon={creatingInvoice ? <CircularProgress size={20} /> : <ReceiptIcon />}
+              size="large"
+              sx={{
+                px: 4,
+                background: 'linear-gradient(45deg, #2196F3 30%, #1976D2 90%)',
+                boxShadow: '0 3px 5px 2px rgba(33, 150, 243, .3)',
+              }}
+            >
+              {creatingInvoice ? 'Creating...' : 'Create Invoice'}
+            </Button>
+          </DialogActions>
+        </form>
+      </Dialog>
+
+      {/* Status Toggle Confirmation Dialog */}
+      <Dialog open={showStatusDialog} onClose={() => !togglingStatus && setShowStatusDialog(false)}>
+        <DialogTitle>
+          {clientToToggle?.isActive === 1 ? 'Deactivate Client' : 'Activate Client'}
+        </DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to {clientToToggle?.isActive === 1 ? 'deactivate' : 'activate'} <strong>{clientToToggle?.name}</strong>?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowStatusDialog(false)} disabled={togglingStatus}>
+            Cancel
+          </Button>
+          <Button 
+            onClick={async () => {
+              if (!clientToToggle) return;
+              
+              setTogglingStatus(true);
+              try {
+                const newStatus = clientToToggle.isActive === 1 ? false : true;
+                await organizationService.toggleClientStatus(clientToToggle.id, newStatus);
+                
+                // Update client status in the list
+                setClients(prev => prev.map(client => 
+                  client.id === clientToToggle.id 
+                    ? { ...client, isActive: newStatus ? 1 : 0 }
+                    : client
+                ));
+                
+                setSuccessMessage(`Client ${newStatus ? 'activated' : 'deactivated'} successfully!`);
+                setShowSuccessSnackbar(true);
+                setShowStatusDialog(false);
+                setClientToToggle(null);
+              } catch (error) {
+                console.error('Failed to toggle client status:', error);
+              } finally {
+                setTogglingStatus(false);
+              }
+            }}
+            color="primary"
+            variant="contained"
+            disabled={togglingStatus}
+            startIcon={togglingStatus ? <CircularProgress size={20} /> : (clientToToggle?.isActive === 1 ? <CancelIcon /> : <CheckCircleIcon />)}
+          >
+            {togglingStatus ? (clientToToggle?.isActive === 1 ? 'Deactivating...' : 'Activating...') : (clientToToggle?.isActive === 1 ? 'Deactivate' : 'Activate')}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onClose={() => !deleting && setShowDeleteDialog(false)}>
+        <DialogTitle>Delete Client</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to delete <strong>{clientToDelete?.name}</strong>? This action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowDeleteDialog(false)} disabled={deleting}>
+            Cancel
+          </Button>
+          <Button 
+            onClick={confirmDelete} 
+            color="error" 
+            variant="contained"
+            disabled={deleting}
+            startIcon={deleting ? <CircularProgress size={20} /> : <DeleteIcon />}
+          >
+            {deleting ? 'Deleting...' : 'Delete'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Error Snackbar */}
       <Snackbar

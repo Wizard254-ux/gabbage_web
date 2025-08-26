@@ -6,6 +6,11 @@ interface DashboardProps {
   onNavigate?: (tab: string) => void;
 }
 
+interface LoadingStates {
+  counts: boolean;
+  greeting: boolean;
+}
+
 export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   const { admin } = useAuth();
   const [stats, setStats] = useState({
@@ -15,64 +20,42 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     activeDrivers: 0,
     activeClients: 0,
   });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<LoadingStates>({
+    counts: true,
+    greeting: false
+  });
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchStats();
+    fetchDashboardData();
   }, []);
 
-  const fetchStats = async () => {
-    console.log('🚀 Dashboard: Starting to fetch stats...');
+  const fetchDashboardData = async () => {
+    console.log('🚀 Dashboard: Starting to fetch optimized dashboard data...');
+    setError(null);
+    
     try {
-      const [driversRes, clientsRes, routesRes] = await Promise.all([
-        organizationService.listDrivers(),
-        organizationService.listClients(),
-        organizationService.getAllRoutes(),
-      ]);
-
-      console.log('📊 Dashboard: API responses:', {
-        drivers: driversRes.data,
-        clients: clientsRes.data,
-        routes: routesRes.data
-      });
-
-      const drivers = driversRes.data?.data?.users || [];
-      const clients = clientsRes.data?.data?.users || [];
-      const routes = routesRes.data?.data?.data || [];
-
-      console.log('🔍 Dashboard: Detailed data check:', {
-        driversCount: drivers.length,
-        clientsCount: clients.length,
-        routesCount: routes.length,
-        driversData: drivers,
-        clientsData: clients
-      });
-
-      const activeDrivers = drivers.filter((d: any) => d.isActive === 1 || d.isActive === true);
-      const activeClients = clients.filter((c: any) => c.isActive === 1 || c.isActive === true);
+      // Fetch counts from optimized endpoint
+      const countsResponse = await organizationService.getDashboardCounts();
       
-      console.log('🔍 Dashboard: Active filtering results:', {
-        activeDrivers: activeDrivers,
-        activeClients: activeClients,
-        activeDriversCount: activeDrivers.length,
-        activeClientsCount: activeClients.length
-      });
-
-      const calculatedStats = {
-        totalDrivers: drivers.length,
-        totalClients: clients.length,
-        totalRoutes: routes.length,
-        activeDrivers: activeDrivers.length,
-        activeClients: activeClients.length,
-      };
-      
-      console.log('📊 Dashboard: Calculated stats:', calculatedStats);
-      setStats(calculatedStats);
-    } catch (error) {
-      console.error('❌ Dashboard: Failed to fetch stats:', error);
+      if (countsResponse.data.status) {
+        const countsData = countsResponse.data.data;
+        setStats({
+          totalDrivers: countsData.totalDrivers || 0,
+          totalClients: countsData.totalClients || 0,
+          totalRoutes: countsData.totalRoutes || 0,
+          activeDrivers: countsData.activeDrivers || 0,
+          activeClients: countsData.activeClients || 0,
+        });
+      } else {
+        throw new Error('Failed to fetch dashboard counts');
+      }
+    } catch (error: any) {
+      console.error('❌ Dashboard: Failed to fetch dashboard data:', error);
+      setError(error.message || 'Failed to load dashboard data');
     } finally {
-      setLoading(false);
-      console.log('🏁 Dashboard: Stats fetching completed');
+      setLoading(prev => ({ ...prev, counts: false }));
+      console.log('🏁 Dashboard: Dashboard data fetching completed');
     }
   };
 
@@ -83,10 +66,42 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     return 'Good Evening';
   };
 
-  if (loading) {
+  // Component for loading skeleton
+  const StatsCardSkeleton = () => (
+    <div className="animate-pulse">
+      <div className="bg-gradient-to-r from-gray-200 to-gray-300 rounded-xl p-6">
+        <div className="flex items-center justify-between">
+          <div className="flex-1">
+            <div className="h-4 bg-gray-300 rounded w-24 mb-3"></div>
+            <div className="h-8 bg-gray-300 rounded w-16"></div>
+          </div>
+          <div className="w-12 h-12 bg-gray-300 rounded-lg"></div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Show error state if there's an error
+  if (error && loading.counts) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+      <div className="p-4">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-center">
+            <svg className="w-5 h-5 text-red-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div>
+              <p className="text-red-800 font-medium">Failed to load dashboard</p>
+              <p className="text-red-600 text-sm mt-1">{error}</p>
+            </div>
+          </div>
+          <button 
+            onClick={fetchDashboardData}
+            className="mt-3 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm"
+          >
+            Try Again
+          </button>
+        </div>
       </div>
     );
   }
@@ -103,75 +118,95 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-        <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl p-6 text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-blue-100">Total Drivers</p>
-              <p className="text-3xl font-bold">{stats.totalDrivers}</p>
-            </div>
-            <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
-              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
+        {loading.counts ? (
+          <StatsCardSkeleton />
+        ) : (
+          <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl p-6 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-blue-100">Total Drivers</p>
+                <p className="text-3xl font-bold">{stats.totalDrivers}</p>
+              </div>
+              <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
-        <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-xl p-6 text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <p>Total Clients</p>
-              <p className="text-3xl font-bold">{stats.totalClients}</p>
-            </div>
-            <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
-              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-              </svg>
+        {loading.counts ? (
+          <StatsCardSkeleton />
+        ) : (
+          <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-xl p-6 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <p>Total Clients</p>
+                <p className="text-3xl font-bold">{stats.totalClients}</p>
+              </div>
+              <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+                </svg>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
-        <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-xl p-6 text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-purple-100">Total Routes</p>
-              <p className="text-3xl font-bold">{stats.totalRoutes}</p>
-            </div>
-            <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
-              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-              </svg>
+        {loading.counts ? (
+          <StatsCardSkeleton />
+        ) : (
+          <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-xl p-6 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-purple-100">Total Routes</p>
+                <p className="text-3xl font-bold">{stats.totalRoutes}</p>
+              </div>
+              <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                </svg>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
-        <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl p-6 text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-orange-100">Active Drivers</p>
-              <p className="text-3xl font-bold">{stats.activeDrivers}</p>
-            </div>
-            <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
-              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+        {loading.counts ? (
+          <StatsCardSkeleton />
+        ) : (
+          <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl p-6 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-orange-100">Active Drivers</p>
+                <p className="text-3xl font-bold">{stats.activeDrivers}</p>
+              </div>
+              <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
-        <div className="bg-gradient-to-r from-teal-500 to-teal-600 rounded-xl p-6 text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-teal-100">Active Clients</p>
-              <p className="text-3xl font-bold">{stats.activeClients}</p>
-            </div>
-            <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
-              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
+        {loading.counts ? (
+          <StatsCardSkeleton />
+        ) : (
+          <div className="bg-gradient-to-r from-teal-500 to-teal-600 rounded-xl p-6 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-teal-100">Active Clients</p>
+                <p className="text-3xl font-bold">{stats.activeClients}</p>
+              </div>
+              <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Quick Actions */}

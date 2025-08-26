@@ -3,33 +3,31 @@ import { format } from 'date-fns';
 
 interface Pickup {
   id: number;
-  userId: number;
-  user: {
+  client_id: number;
+  client: {
+    id: number;
     name: string;
     email: string;
     phone: string;
     address: string;
-    accountNumber: string;
   };
-  routeId: number;
+  route_id: number;
   route: {
+    id: number;
     name: string;
     path: string;
   };
-  driverId: number | null;
+  driver_id: number | null;
   driver?: {
+    id: number;
     name: string;
     email: string;
     phone: string;
   };
-  scheduledDate: string;
-  pickupDay: string;
-  weekOf: string;
-  status: 'scheduled' | 'completed' | 'missed';
-  completedAt: string | null;
-  notes: string;
-  createdAt: string;
-  bagsCollected: number;
+  pickup_date: string;
+  pickup_status: 'scheduled' | 'picked' | 'missed';
+  picked_at: string | null;
+  created_at: string;
 }
 
 interface Driver {
@@ -66,7 +64,7 @@ export const PickupTable: React.FC<PickupTableProps> = ({
   // Function to get status badge color
   const getStatusBadge = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'completed':
+      case 'picked':
         return 'bg-green-500 text-white';
       case 'scheduled':
         return 'bg-yellow-500 text-white';
@@ -82,8 +80,8 @@ export const PickupTable: React.FC<PickupTableProps> = ({
 
   const handleEdit = (pickup: Pickup) => {
     setEditingPickup(pickup.id.toString());
-    setSelectedStatus(pickup.status);
-    setSelectedDriverId(pickup.driverId?.toString() || '');
+    setSelectedStatus(pickup.pickup_status);
+    setSelectedDriverId(pickup.driver_id?.toString() || '');
   };
 
   const handleSave = (id: string) => {
@@ -103,27 +101,25 @@ export const PickupTable: React.FC<PickupTableProps> = ({
             <tr>
               <th className="py-3 px-4 border-b text-left">#</th>
               <th className="py-3 px-4 border-b text-left">Client</th>
-              <th className="py-3 px-4 border-b text-left">Account Number</th>
               <th className="py-3 px-4 border-b text-left">Route</th>
-              <th className="py-3 px-4 border-b text-left">Pickup Day</th>
-              <th className="py-3 px-4 border-b text-left">Scheduled Date</th>
-              <th className="py-3 px-4 border-b text-left">Week Of</th>
+              <th className="py-3 px-4 border-b text-left">Pickup</th>
+              <th className="py-3 px-4 border-b text-left">Scheduled </th>
+              <th className="py-3 px-4 border-b text-left">Week</th>
               <th className="py-3 px-4 border-b text-left">Status</th>
               <th className="py-3 px-4 border-b text-left">Driver</th>
-              <th className="py-3 px-4 border-b text-left">Completed At</th>
-              <th className="py-3 px-4 border-b text-left">Actions</th>
+              <th className="py-3 px-4 border-b text-left">Completed </th>
+              {/* <th className="py-3 px-4 border-b text-left">Actions</th> */}
             </tr>
           </thead>
           <tbody>
             {pickups.map((pickup, index) => (
               <tr key={pickup.id} className="hover:bg-gray-50">
                 <td className="py-3 px-4 border-b">{startIndex + index + 1}</td>
-                <td className="py-3 px-4 border-b">{pickup.user.name}</td>
-                <td className="py-3 px-4 border-b">{pickup.user.accountNumber}</td>
+                <td className="py-3 px-4 border-b">{pickup.client.name}</td>
                 <td className="py-3 px-4 border-b">{pickup.route.name} - {pickup.route.path}</td>
-                <td className="py-3 px-4 border-b">{pickup.pickupDay ? pickup.pickupDay.charAt(0).toUpperCase() + pickup.pickupDay.slice(1) : '-'}</td>
-                <td className="py-3 px-4 border-b">{formatDate(pickup.scheduledDate)}</td>
-                <td className="py-3 px-4 border-b">{pickup.weekOf ? formatDate(pickup.weekOf) : '-'}</td>
+                <td className="py-3 px-4 border-b">{format(new Date(pickup.created_at), 'EEEE')}</td>
+                <td className="py-3 px-4 border-b">{formatDate(pickup.pickup_date)}</td>
+                <td className="py-3 px-4 border-b"> {Math.ceil(new Date(pickup.created_at).getDate() / 7)}th of {format(new Date(pickup.created_at), 'MMMM')}</td>
                 <td className="py-3 px-4 border-b">
                   {editingPickup === pickup.id.toString() ? (
                     <select
@@ -132,12 +128,12 @@ export const PickupTable: React.FC<PickupTableProps> = ({
                       className="border border-gray-300 rounded px-2 py-1 text-sm"
                     >
                       <option value="scheduled">Scheduled</option>
-                      <option value="completed">Completed</option>
+                      <option value="picked">Picked</option>
                       <option value="missed">Missed</option>
                     </select>
                   ) : (
-                    <span className={`px-2 py-1 text-xs rounded-full ${getStatusBadge(pickup.status)}`}>
-                      {pickup.status.charAt(0).toUpperCase() + pickup.status.slice(1)}
+                    <span className={`px-2 py-1 text-xs rounded-full ${getStatusBadge(pickup.pickup_status)}`}>
+                      {pickup.pickup_status.charAt(0).toUpperCase() + pickup.pickup_status.slice(1)}
                     </span>
                   )}
                 </td>
@@ -160,9 +156,9 @@ export const PickupTable: React.FC<PickupTableProps> = ({
                   )}
                 </td>
                 <td className="py-3 px-4 border-b">
-                  {pickup.completedAt ? formatDate(pickup.completedAt) : '-'}
+                  {pickup.picked_at ? formatDate(pickup.picked_at) : '-'}
                 </td>
-                <td className="py-3 px-4 border-b">
+                {/* <td className="py-3 px-4 border-b">
                   {editingPickup === pickup.id.toString() ? (
                     <div className="flex space-x-2">
                       <button
@@ -186,12 +182,12 @@ export const PickupTable: React.FC<PickupTableProps> = ({
                       Edit
                     </button>
                   )}
-                </td>
+                </td> */}
               </tr>
             ))}
             {pickups.length === 0 && (
               <tr>
-                <td colSpan={11} className="py-4 text-center text-gray-500">No pickups found</td>
+                <td colSpan={10} className="py-4 text-center text-gray-500">No pickups found</td>
               </tr>
             )}
           </tbody>

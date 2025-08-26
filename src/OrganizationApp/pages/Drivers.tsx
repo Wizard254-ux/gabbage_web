@@ -36,6 +36,7 @@ import {
   FormControlLabel,
   Tabs,
   Tab,
+  Pagination,
 
 } from '@mui/material';
 import {
@@ -57,7 +58,8 @@ import {
   Email as EmailIcon,
   Phone as PhoneIcon,
   CalendarToday as CalendarIcon,
-  Cancel as CancelIcon
+  Cancel as CancelIcon,
+  CheckCircle as CheckCircleIcon
 } from '@mui/icons-material';
 import { organizationService } from '../../services/organizationService';
 import { GridLegacy as Grid } from "@mui/material";
@@ -71,7 +73,7 @@ interface Driver {
   updated_at: string;
   isSent: number;
   documents: string[];
-  adress?: string;
+  address?: string;
   email_verified_at?: string;
   role: string;
   organization_id: number;
@@ -103,10 +105,29 @@ function TabPanel(props: TabPanelProps) {
   );
 }
 
+interface PaginationState {
+  currentPage: number;
+  totalPages: number;
+  totalItems: number;
+  itemsPerPage: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+}
+
 export const Drivers: React.FC = () => {
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [routes, setRoutes] = useState<unknown[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pagination, setPagination] = useState<PaginationState>({
+    currentPage: 1,
+    totalPages: 1,
+    totalItems: 0,
+    itemsPerPage: 20,
+    hasNextPage: false,
+    hasPrevPage: false
+  });
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searching, setSearching] = useState(false);
   const [addingDriver, setAddingDriver] = useState(false);
   const [sendingCredentials, setSendingCredentials] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -115,7 +136,7 @@ export const Drivers: React.FC = () => {
   const [loadingDriverDetails, setLoadingDriverDetails] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [showSuccessSnackbar, setShowSuccessSnackbar] = useState(false);
-  const [selectedDriver, setSelectedDriver] = useState<Driver >("");
+  const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [isDocumentEditMode, setIsDocumentEditMode] = useState(false);
   const [editFormData, setEditFormData] = useState({
@@ -138,28 +159,54 @@ export const Drivers: React.FC = () => {
   const [addingNewDocuments, setAddingNewDocuments] = useState(false);
   const [detailsTabValue, setDetailsTabValue] = useState(0);
   const [loadingEdit, setLoadingEdit] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [driverToDelete, setDriverToDelete] = useState<Driver | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [clearing, setClearing] = useState(false);
+  const [showStatusDialog, setShowStatusDialog] = useState(false);
+  const [driverToToggle, setDriverToToggle] = useState<Driver | null>(null);
+  const [togglingStatus, setTogglingStatus] = useState(false);
 
   // Menu state
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [menuDriver, setMenuDriver] = useState<Driver | null>(null);
 
   useEffect(() => {
-    fetchDrivers();
+    fetchDrivers(1, ''); // Initial load with no search
     // fetchRoutes(); // Disabled due to association error
   }, []);
 
-  const fetchDrivers = async () => {
+  const fetchDrivers = async (page = 1, search = '', isSearching = false, showLoading = true) => {
     try {
-      console.log('Fetching drivers...');
-      const response = await organizationService.listDrivers();
+      if (isSearching) {
+        setSearching(true);
+      } else if (showLoading) {
+        setLoading(true);
+      }
+      
+      console.log('Fetching drivers with params:', { page, search });
+      const response = await organizationService.listDrivers({
+        page: page.toString(),
+        limit: '20',
+        search
+      });
       console.log('Full response:', response);
       console.log('Response data:', response.data);
-      console.log('Users array:', response.data?.data?.users);
-      setDrivers(response.data?.data?.users || []);
+      
+      if (response.data?.status && response.data?.data) {
+        setDrivers(response.data.data.users || []);
+        if (response.data.data.pagination) {
+          setPagination(response.data.data.pagination);
+        }
+      }
     } catch (error) {
       console.error('Failed to fetch drivers:', error);
     } finally {
-      setLoading(false);
+      if (isSearching) {
+        setSearching(false);
+      } else if (showLoading) {
+        setLoading(false);
+      }
     }
   };
 
@@ -172,6 +219,7 @@ export const Drivers: React.FC = () => {
       console.error('Failed to fetch routes:', error);
     }
   };
+
 
   const getDriverActiveRoute = (driverId: string) => {
     const activeRoute = routes.find(route => route.activeDriverId === driverId && route.isActive);
@@ -242,12 +290,51 @@ export const Drivers: React.FC = () => {
       }
       console.log('driver',selectedDriver)
 
-      await organizationService.editDriverWithDocuments(selectedDriver.id, formData);
+      const result = await organizationService.editDriverWithDocuments(selectedDriver.id, formData);
+      console.log('Driver update result:', result);
+      
+      if (result?.data?.status && result?.data?.data?.driver) {
+        const rawUpdatedDriver = result.data.data.driver;
+        console.log('Raw updated driver from backend:', rawUpdatedDriver);
+        
+        // Transform the updated driver data to match our interface
+        const updatedDriver: Driver = {
+          id: rawUpdatedDriver.id,
+          name: rawUpdatedDriver.name,
+          email: rawUpdatedDriver.email,
+          phone: rawUpdatedDriver.phone,
+          isActive: rawUpdatedDriver.isActive,
+          created_at: rawUpdatedDriver.created_at,
+          updated_at: rawUpdatedDriver.updated_at,
+          isSent: rawUpdatedDriver.isSent,
+          documents: Array.isArray(rawUpdatedDriver.documents) ? rawUpdatedDriver.documents : [],
+          address: rawUpdatedDriver.address || '',
+          email_verified_at: rawUpdatedDriver.email_verified_at,
+          role: rawUpdatedDriver.role,
+          organization_id: rawUpdatedDriver.organization_id,
+          // Use backend data if available, otherwise preserve existing values
+          active_route: rawUpdatedDriver.active_route || selectedDriver.active_route,
+          allocated_bags: rawUpdatedDriver.allocated_bags ?? selectedDriver.allocated_bags
+        };
+        
+        console.log('Transformed updated driver:', updatedDriver);
+        
+        // Update the driver in the current list
+        setDrivers(prev => {
+          const updatedList = prev.map(driver => 
+            driver.id === selectedDriver.id ? updatedDriver : driver
+          );
+          console.log('Updated drivers list after edit:', updatedList);
+          return updatedList;
+        });
+      } else {
+        console.error('Invalid update result structure:', result);
+      }
+      
       setShowEditModal(false);
       setSelectedDriver(null);
       setDocumentsToDelete([]);
       setEditDocumentsFiles(null);
-      fetchDrivers();
 
       setSuccessMessage('Driver updated successfully!');
       setShowSuccessSnackbar(true);
@@ -258,17 +345,47 @@ export const Drivers: React.FC = () => {
     }
   };
 
-  const handleDelete = async (driver: Driver) => {
+  const handleDelete = (driver: Driver) => {
     handleMenuClose();
-    if (window.confirm('Are you sure you want to delete this driver?')) {
-      try {
-        await organizationService.deleteDriver(driver.id);
-        fetchDrivers();
-        setSuccessMessage('Driver deleted successfully!');
-        setShowSuccessSnackbar(true);
-      } catch (error) {
-        console.error('Failed to delete driver:', error);
-      }
+    setDriverToDelete(driver);
+    setShowDeleteDialog(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!driverToDelete) return;
+    
+    setDeleting(true);
+    try {
+      await organizationService.deleteDriver(driverToDelete.id);
+      
+      // Remove driver from current list and update pagination
+      setDrivers(prev => prev.filter(d => d.id !== driverToDelete.id));
+      setPagination(prev => {
+        const newTotalItems = prev.totalItems - 1;
+        const newTotalPages = Math.ceil(newTotalItems / prev.itemsPerPage);
+        
+        // If current page becomes empty and it's not the first page, go to previous page
+        if (drivers.length === 1 && prev.currentPage > 1) {
+          fetchDrivers(prev.currentPage - 1, searchQuery);
+          return prev;
+        }
+        
+        return {
+          ...prev,
+          totalItems: newTotalItems,
+          totalPages: newTotalPages,
+          hasNextPage: prev.currentPage < newTotalPages
+        };
+      });
+      
+      setSuccessMessage('Driver deleted successfully!');
+      setShowSuccessSnackbar(true);
+      setShowDeleteDialog(false);
+      setDriverToDelete(null);
+    } catch (error) {
+      console.error('Failed to delete driver:', error);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -277,9 +394,14 @@ export const Drivers: React.FC = () => {
     setSendingCredentials(true);
     try {
       await organizationService.sendDriverCredentials(driver.id);
+      
+      // Update the driver's isSent status in the current list
+      setDrivers(prev => prev.map(d => 
+        d.id === driver.id ? { ...d, isSent: 1 } : d
+      ));
+      
       setSuccessMessage(`Credentials ${driver.isSent === 1 ? 'resent' : 'sent'} successfully to ${driver.email}`);
       setShowSuccessSnackbar(true);
-      await fetchDrivers();
     } catch (error) {
       console.error('Failed to send credentials:', error);
     } finally {
@@ -415,10 +537,67 @@ export const Drivers: React.FC = () => {
 
       const result = await organizationService.createDriverWithMultipart(formData);
       console.log('Driver creation result:', result);
+      console.log('Result data:', result?.data);
+      console.log('Driver data:', result?.data?.driver);
+      
+      if (result?.data?.driver) {
+        const rawDriver = result.data.driver;
+        console.log('Raw driver before transformation:', rawDriver);
+        
+        // Transform the driver data to match the expected format
+        const newDriver: Driver = {
+          id: rawDriver.id,
+          name: rawDriver.name,
+          email: rawDriver.email,
+          phone: rawDriver.phone,
+          isActive: rawDriver.isActive ?? 1, // Default to active if undefined
+          created_at: rawDriver.created_at,
+          updated_at: rawDriver.updated_at,
+          isSent: 1, // Since credentials were sent
+          documents: Array.isArray(rawDriver.documents) ? rawDriver.documents : [],
+          address: rawDriver.address || '',
+          email_verified_at: rawDriver.email_verified_at || null,
+          role: rawDriver.role,
+          organization_id: rawDriver.organization_id,
+          active_route: null, // New drivers don't have routes
+          allocated_bags: 0 // New drivers don't have bags allocated
+        };
+        
+        console.log('Transformed new driver:', newDriver);
+        console.log('Current pagination state:', pagination);
+        console.log('Current page:', pagination.currentPage);
+        
+        // Add to the beginning of the current page or fetch first page if not on first page
+        if (pagination.currentPage === 1) {
+          console.log('Adding to current page (page 1)');
+          setDrivers(prev => {
+            console.log('Previous drivers:', prev);
+            const updatedDrivers = [newDriver, ...prev.slice(0, 19)]; // Keep only 19 to make room for new one
+            console.log('Updated drivers list:', updatedDrivers);
+            return updatedDrivers;
+          });
+          setPagination(prev => {
+            const newPagination = {
+              ...prev,
+              totalItems: prev.totalItems + 1,
+              totalPages: Math.ceil((prev.totalItems + 1) / prev.itemsPerPage),
+              hasNextPage: Math.ceil((prev.totalItems + 1) / prev.itemsPerPage) > prev.currentPage
+            };
+            console.log('Updated pagination:', newPagination);
+            return newPagination;
+          });
+        } else {
+          // If not on first page, go to first page to show the new driver
+          console.log('Not on first page, fetching page 1...');
+          fetchDrivers(1, searchQuery);
+        }
+      } else {
+        console.error('Invalid result structure:', result);
+      }
+      
       setShowAddModal(false);
       setAddFormData({ name: '', email: '', phone: '' });
       setDocumentsFiles(null);
-      await fetchDrivers();
 
       setSuccessMessage('Driver added successfully!');
       setShowSuccessSnackbar(true);
@@ -429,11 +608,27 @@ export const Drivers: React.FC = () => {
     }
   };
 
-  const filteredDrivers = drivers.filter(driver =>
-    driver.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    driver.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    driver.phone?.includes(searchTerm)
-  );
+  // Handle manual search
+  const handleSearch = () => {
+    const trimmedSearch = searchTerm.trim();
+    console.log('Search triggered:', { searchTerm, trimmedSearch, currentSearchQuery: searchQuery });
+    
+    // Always search, even if same term (user might want to refresh)
+    setSearchQuery(trimmedSearch);
+    fetchDrivers(1, trimmedSearch, true);
+  };
+
+  // Handle search input key press
+  const handleSearchKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  };
+
+  // Handle page changes
+  const handlePageChange = (newPage: number) => {
+    fetchDrivers(newPage, searchQuery);
+  };
 
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
@@ -494,25 +689,53 @@ export const Drivers: React.FC = () => {
         <CardContent>
           <Grid container spacing={3} alignItems="center">
             <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                placeholder="Search drivers..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon />
-                    </InputAdornment>
-                  ),
-                }}
-              />
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <TextField
+                  fullWidth
+                  placeholder="Search drivers..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onKeyPress={handleSearchKeyPress}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+                <Button
+                  variant="contained"
+                  onClick={handleSearch}
+                  disabled={searching}
+                  sx={{ minWidth: '100px' }}
+                >
+                  {searching ? <CircularProgress size={20} /> : 'Search'}
+                </Button>
+                <Button
+                  variant="outlined"
+                  onClick={async () => {
+                    setSearchTerm('');
+                    setSearchQuery('');
+                    setClearing(true);
+                    try {
+                      await fetchDrivers(1, '', false, false); // Pass false for isSearching and showLoading
+                    } finally {
+                      setClearing(false);
+                    }
+                  }}
+                  disabled={searching || clearing}
+                  sx={{ minWidth: '80px' }}
+                >
+                  {clearing ? 'Clearing...' : 'Clear'}
+                </Button>
+              </Box>
             </Grid>
             <Grid item xs={12} md={6}>
               <Box sx={{ display: 'flex', gap: 3, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Box sx={{ width: 12, height: 12, bgcolor: '#2196F3', borderRadius: '50%' }} />
-                  <Typography variant="body2">Total: {drivers.length}</Typography>
+                  <Typography variant="body2">Total: {pagination.totalItems}</Typography>
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Box sx={{ width: 12, height: 12, bgcolor: '#4CAF50', borderRadius: '50%' }} />
@@ -521,6 +744,11 @@ export const Drivers: React.FC = () => {
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Box sx={{ width: 12, height: 12, bgcolor: '#F44336', borderRadius: '50%' }} />
                   <Typography variant="body2">Inactive: {drivers.filter(d => d.isActive === 0).length}</Typography>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Page {pagination.currentPage} of {pagination.totalPages}
+                  </Typography>
                 </Box>
               </Box>
             </Grid>
@@ -544,13 +772,28 @@ export const Drivers: React.FC = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {filteredDrivers.map((driver, index) => (
+            {loading ? (
+              // Show loading skeletons
+              Array.from({ length: 5 }).map((_, index) => (
+                <TableRow key={`skeleton-${index}`}>
+                  <TableCell><div style={{ height: '20px', backgroundColor: '#f0f0f0', borderRadius: '4px' }}></div></TableCell>
+                  <TableCell><div style={{ height: '40px', backgroundColor: '#f0f0f0', borderRadius: '4px' }}></div></TableCell>
+                  <TableCell><div style={{ height: '20px', backgroundColor: '#f0f0f0', borderRadius: '4px' }}></div></TableCell>
+                  <TableCell><div style={{ height: '20px', backgroundColor: '#f0f0f0', borderRadius: '4px' }}></div></TableCell>
+                  <TableCell><div style={{ height: '20px', backgroundColor: '#f0f0f0', borderRadius: '4px' }}></div></TableCell>
+                  <TableCell><div style={{ height: '20px', backgroundColor: '#f0f0f0', borderRadius: '4px' }}></div></TableCell>
+                  <TableCell><div style={{ height: '20px', backgroundColor: '#f0f0f0', borderRadius: '4px' }}></div></TableCell>
+                  <TableCell><div style={{ height: '20px', backgroundColor: '#f0f0f0', borderRadius: '4px' }}></div></TableCell>
+                </TableRow>
+              ))
+            ) : (
+              drivers.map((driver, index) => (
               <TableRow
                 key={driver.id}
                 hover
                 sx={{ '&:hover': { bgcolor: 'grey.50' } }}
               >
-                <TableCell>{index + 1}</TableCell>
+                <TableCell>{((pagination.currentPage - 1) * pagination.itemsPerPage) + index + 1}</TableCell>
 
                 <TableCell>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -627,22 +870,38 @@ export const Drivers: React.FC = () => {
                   </IconButton>
                 </TableCell>
               </TableRow>
-            ))}
+              ))
+            )}
           </TableBody>
         </Table>
 
-        {filteredDrivers.length === 0 && (
+        {drivers.length === 0 && !loading && (
           <Box sx={{ textAlign: 'center', py: 8 }}>
             <PersonIcon sx={{ fontSize: 48, color: 'grey.400', mb: 2 }} />
             <Typography variant="h6" color="text.secondary" gutterBottom>
               No drivers found
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              {searchTerm ? 'Try adjusting your search terms.' : 'Get started by adding a new driver.'}
+              {searchQuery ? 'Try adjusting your search terms.' : 'Get started by adding a new driver.'}
             </Typography>
           </Box>
         )}
       </TableContainer>
+
+      {/* Pagination Controls */}
+      {pagination.totalPages > 1 && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 3 }}>
+          <Pagination
+            count={pagination.totalPages}
+            page={pagination.currentPage}
+            onChange={(_, page) => handlePageChange(page)}
+            color="primary"
+            size="large"
+            showFirstButton
+            showLastButton
+          />
+        </Box>
+      )}
 
       {/* Action Menu */}
       <Menu
@@ -668,6 +927,19 @@ export const Drivers: React.FC = () => {
         <MenuItem onClick={() => menuDriver && handleEdit(menuDriver)} disabled={loadingEdit}>
           {loadingEdit ? <CircularProgress size={20} sx={{ mr: 2 }} /> : <EditIcon sx={{ mr: 2, fontSize: 20 }} />}
           {loadingEdit ? 'Loading...' : 'Edit'}
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            if (menuDriver) {
+              setDriverToToggle(menuDriver);
+              setShowStatusDialog(true);
+              handleMenuClose();
+            }
+          }}
+          sx={{ color: 'primary.main' }}
+        >
+          {menuDriver?.isActive === 1 ? <CancelIcon sx={{ mr: 2, fontSize: 20 }} /> : <CheckCircleIcon sx={{ mr: 2, fontSize: 20 }} />}
+          {menuDriver?.isActive === 1 ? 'Deactivate' : 'Activate'}
         </MenuItem>
         <MenuItem
           onClick={() => menuDriver && handleDelete(menuDriver)}
@@ -1521,6 +1793,80 @@ export const Drivers: React.FC = () => {
             fullWidth
           >
             Close
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Status Toggle Confirmation Dialog */}
+      <Dialog open={showStatusDialog} onClose={() => !togglingStatus && setShowStatusDialog(false)}>
+        <DialogTitle>
+          {driverToToggle?.isActive === 1 ? 'Deactivate Driver' : 'Activate Driver'}
+        </DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to {driverToToggle?.isActive === 1 ? 'deactivate' : 'activate'} <strong>{driverToToggle?.name}</strong>?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowStatusDialog(false)} disabled={togglingStatus}>
+            Cancel
+          </Button>
+          <Button 
+            onClick={async () => {
+              if (!driverToToggle) return;
+              
+              setTogglingStatus(true);
+              try {
+                const newStatus = driverToToggle.isActive === 1 ? false : true;
+                await organizationService.toggleDriverStatus(driverToToggle.id, newStatus);
+                
+                // Update driver status in the list
+                setDrivers(prev => prev.map(driver => 
+                  driver.id === driverToToggle.id 
+                    ? { ...driver, isActive: newStatus ? 1 : 0 }
+                    : driver
+                ));
+                
+                setSuccessMessage(`Driver ${newStatus ? 'activated' : 'deactivated'} successfully!`);
+                setShowSuccessSnackbar(true);
+                setShowStatusDialog(false);
+                setDriverToToggle(null);
+              } catch (error) {
+                console.error('Failed to toggle driver status:', error);
+              } finally {
+                setTogglingStatus(false);
+              }
+            }}
+            color="primary"
+            variant="contained"
+            disabled={togglingStatus}
+            startIcon={togglingStatus ? <CircularProgress size={20} /> : (driverToToggle?.isActive === 1 ? <CancelIcon /> : <CheckCircleIcon />)}
+          >
+            {togglingStatus ? (driverToToggle?.isActive === 1 ? 'Deactivating...' : 'Activating...') : (driverToToggle?.isActive === 1 ? 'Deactivate' : 'Activate')}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onClose={() => !deleting && setShowDeleteDialog(false)}>
+        <DialogTitle>Delete Driver</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to delete <strong>{driverToDelete?.name}</strong>? This action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowDeleteDialog(false)} disabled={deleting}>
+            Cancel
+          </Button>
+          <Button 
+            onClick={confirmDelete} 
+            color="error" 
+            variant="contained"
+            disabled={deleting}
+            startIcon={deleting ? <CircularProgress size={20} /> : <DeleteIcon />}
+          >
+            {deleting ? 'Deleting...' : 'Delete'}
           </Button>
         </DialogActions>
       </Dialog>
