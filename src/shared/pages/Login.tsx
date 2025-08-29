@@ -33,7 +33,7 @@ const Login: React.FC = () => {
       localStorage.setItem('user', JSON.stringify(userData));
       console.log('User data stored:', userData);
       // Navigate based on role
-      if (userData.data.user?.role === 'admin') {
+      if (userData.data.user?.role === 'admin' || userData.data.user?.role === 'super_admin') {
         navigate('/admin/dashboard');
       } else if (userData.data.user?.role === 'organization') {
         navigate('/organization/dashboard');

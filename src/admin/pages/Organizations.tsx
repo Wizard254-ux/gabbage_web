@@ -200,12 +200,16 @@ const Organizations: React.FC = () => {
     setDeleting(true);
     try {
       await adminService.deleteOrganization(selectedOrg.id);
+      
+      // Remove organization from list immediately
+      setOrganizations(prev => prev.filter(org => org.id !== selectedOrg.id));
+      setTotal(prev => prev - 1);
+      
       setShowDeleteDialog(false);
       setSelectedOrg(null);
       setDeleteConfirmText('');
       setSuccessMessage('Organization deleted successfully!');
       setTimeout(() => setSuccessMessage(''), 3000);
-      fetchOrganizations();
     } catch (error: any) {
       console.error("Failed to delete organization:", error);
     } finally {
@@ -219,12 +223,19 @@ const Organizations: React.FC = () => {
     setDeactivating(true);
     try {
       await adminService.toggleOrganizationStatus(selectedOrg.id);
+      
+      // Update organization status immediately
+      setOrganizations(prev => prev.map(org => 
+        org.id === selectedOrg.id 
+          ? { ...org, isActive: !org.isActive, updated_at: new Date().toISOString() }
+          : org
+      ));
+      
       setShowDeactivateDialog(false);
       setSelectedOrg(null);
       setDeactivateConfirmText('');
       setSuccessMessage(`Organization ${selectedOrg.isActive ? 'deactivated' : 'activated'} successfully!`);
       setTimeout(() => setSuccessMessage(''), 3000);
-      fetchOrganizations();
     } catch (error: any) {
       console.error("Failed to deactivate organization:", error);
     } finally {
@@ -263,7 +274,27 @@ const Organizations: React.FC = () => {
         token: localStorage.getItem('admin') ? JSON.parse(localStorage.getItem('admin')!).data?.access_token?.substring(0, 20) + '...' : 'none'
       });
 
-      await adminService.addOrganization(formDataObj);
+      const response = await adminService.addOrganization(formDataObj);
+      
+      // Create new organization object from response
+      const userData = response.data.data.user;
+      const newOrganization = {
+        id: userData.id.toString(),
+        name: userData.name,
+        email: userData.email,
+        phone: userData.phone,
+        address: userData.address,
+        isActive: userData.isActive || false,
+        isSent: userData.isSent,
+        documents: userData.documents,
+        created_at: userData.created_at,
+        updated_at: userData.updated_at
+      };
+      
+      // Update UI immediately without refetching
+      setOrganizations(prev => [newOrganization, ...prev]);
+      setTotal(prev => prev + 1);
+      
       setShowAddDialog(false);
       setFormData({
         name: '',
@@ -274,7 +305,6 @@ const Organizations: React.FC = () => {
       setDocuments([]);
       setSuccessMessage('Organization created successfully!');
       setTimeout(() => setSuccessMessage(''), 3000);
-      await fetchOrganizations();
     } catch (error: any) {
       console.error("Failed to add organization:", error);
       if (error.response?.data?.errors) {
@@ -307,12 +337,19 @@ const Organizations: React.FC = () => {
         return;
       }
 
-      await adminService.updateOrganization(selectedOrg.id, changedData);
+      const response = await adminService.updateOrganization(selectedOrg.id, changedData);
+      
+      // Update organization in the list immediately
+      setOrganizations(prev => prev.map(org => 
+        org.id === selectedOrg.id 
+          ? { ...org, ...changedData, updated_at: new Date().toISOString() }
+          : org
+      ));
+      
       setShowEditDialog(false);
       setSelectedOrg(null);
       setSuccessMessage('Organization updated successfully!');
       setTimeout(() => setSuccessMessage(''), 3000);
-      fetchOrganizations();
     } catch (error: any) {
       console.error("Failed to update organization:", error);
     } finally {
@@ -621,8 +658,8 @@ const Organizations: React.FC = () => {
                     </Typography>
                     {selectedOrg.documents && selectedOrg.documents.length > 0 ? (
                       selectedOrg.documents.map((doc, index) => {
-                        const docUrl = typeof doc === 'string' ? doc : ((doc as any)?.url || (doc as any)?.path || '');
-                        const fileName = typeof doc === 'object' && (doc as any).original_name ? (doc as any).original_name : (docUrl ? docUrl.split('/').pop() || `Document ${index + 1}` : `Document ${index + 1}`);
+                        const docUrl = typeof doc === 'string' ? doc : doc?.url || '';
+                        const fileName = typeof doc === 'object' ? (doc.original_name || doc.filename || `Document ${index + 1}`) : (docUrl ? docUrl.split('/').pop() || `Document ${index + 1}` : `Document ${index + 1}`);
                         const isDocx = fileName.toLowerCase().endsWith('.docx') || fileName.toLowerCase().endsWith('.doc');
                         const isPdf = fileName.toLowerCase().endsWith('.pdf');
                         
@@ -645,20 +682,31 @@ const Organizations: React.FC = () => {
                                   onClick={async () => {
                                     setOpeningDoc(index);
                                     try {
+                                      let token = null;
                                       const admin = localStorage.getItem('admin');
+                                      const user = localStorage.getItem('user');
+                                      
                                       if (admin) {
                                         const adminData = JSON.parse(admin);
-                                        const token = adminData.data?.access_token;
-                                        if (token) {
-                                          const response = await fetch(docUrl, {
-                                            headers: {
-                                              'Authorization': `Bearer ${token}`
-                                            }
-                                          });
-                                          const blob = await response.blob();
-                                          const url = window.URL.createObjectURL(blob);
-                                          window.open(url, '_blank');
+                                        token = adminData.data?.access_token;
+                                      } else if (user) {
+                                        const userData = JSON.parse(user);
+                                        token = userData.data?.access_token || userData.access_token;
+                                      }
+                                      
+                                      const response = await fetch(docUrl, {
+                                        headers: {
+                                          'Authorization': `Bearer ${token}`
                                         }
+                                      });
+                                      
+                                      if (response.ok) {
+                                        const blob = await response.blob();
+                                        const url = window.URL.createObjectURL(blob);
+                                        window.open(url, '_blank');
+                                        setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+                                      } else {
+                                        throw new Error('Failed to fetch document');
                                       }
                                     } catch (error) {
                                       console.error('Error opening PDF:', error);
@@ -677,24 +725,36 @@ const Organizations: React.FC = () => {
                                   onClick={async () => {
                                     setDownloadingDoc(index);
                                     try {
+                                      let token = null;
                                       const admin = localStorage.getItem('admin');
+                                      const user = localStorage.getItem('user');
+                                      
                                       if (admin) {
                                         const adminData = JSON.parse(admin);
-                                        const token = adminData.data?.access_token;
-                                        if (token) {
-                                          const response = await fetch(docUrl, {
-                                            headers: {
-                                              'Authorization': `Bearer ${token}`
-                                            }
-                                          });
-                                          const blob = await response.blob();
-                                          const url = window.URL.createObjectURL(blob);
-                                          const link = document.createElement('a');
-                                          link.href = url;
-                                          link.download = fileName;
-                                          link.click();
-                                          window.URL.revokeObjectURL(url);
+                                        token = adminData.data?.access_token;
+                                      } else if (user) {
+                                        const userData = JSON.parse(user);
+                                        token = userData.data?.access_token || userData.access_token;
+                                      }
+                                      
+                                      const response = await fetch(docUrl, {
+                                        headers: {
+                                          'Authorization': `Bearer ${token}`
                                         }
+                                      });
+                                      
+                                      if (response.ok) {
+                                        const blob = await response.blob();
+                                        const url = window.URL.createObjectURL(blob);
+                                        const link = document.createElement('a');
+                                        link.href = url;
+                                        link.download = fileName;
+                                        document.body.appendChild(link);
+                                        link.click();
+                                        document.body.removeChild(link);
+                                        setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+                                      } else {
+                                        throw new Error('Failed to fetch document');
                                       }
                                     } catch (error) {
                                       console.error('Error downloading file:', error);
