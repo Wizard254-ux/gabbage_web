@@ -11,6 +11,7 @@ import AdminLayout from "./admin/components/AdminLayout";
 import AdminDashboard from "./admin/pages/Dashboard";
 import Organizations from "./admin/pages/Organizations";
 import AdminList from "./admin/pages/AdminList";
+import Profile from "./admin/pages/Profile";
 import { OrganizationApp } from "./OrganizationApp/OrganizationApp";
 import { AuthProvider } from "./shared/contexts/AuthContext";
 
@@ -37,6 +38,7 @@ function App() {
               <Route path="dashboard" element={<AdminDashboard />} />
               <Route path="organizations" element={<Organizations />} />
               <Route path="list" element={<AdminList />} />
+              <Route path="profile" element={<Profile />} />
               <Route index element={<Navigate to="dashboard" replace />} />
             </Route>
             <Route

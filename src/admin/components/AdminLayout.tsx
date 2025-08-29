@@ -18,6 +18,7 @@ import {
   Dashboard as DashboardIcon,
   Business as BusinessIcon,
   People as PeopleIcon,
+  Person as PersonIcon,
   Logout as LogoutIcon,
   Nature as EcoIcon,
 } from '@mui/icons-material';
@@ -51,6 +52,7 @@ const AdminLayout: React.FC = () => {
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/admin/dashboard' },
     { text: 'Organizations', icon: <BusinessIcon />, path: '/admin/organizations' },
     { text: 'Admin List', icon: <PeopleIcon />, path: '/admin/list' },
+    { text: 'Profile', icon: <PersonIcon />, path: '/admin/profile' },
   ];
 
   return (
