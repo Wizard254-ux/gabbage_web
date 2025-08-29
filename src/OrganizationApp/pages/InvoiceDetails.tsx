@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { format } from 'date-fns';
-import { organizationService } from '../../services/organizationService';
+import { organizationService } from '../../shared/services/services/organizationService';
 
 interface Payment {
   id: number;

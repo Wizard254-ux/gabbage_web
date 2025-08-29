@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
-import { organizationService } from '../../services/organizationService';
+import { useAuth } from '../../shared/contexts/AuthContext';
+import { organizationService } from '../../shared/services/services/organizationService';
 
 interface DashboardProps {
   onNavigate?: (tab: string) => void;
@@ -25,6 +25,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     greeting: false
   });
   const [error, setError] = useState<string | null>(null);
+  const [showErrorModal, setShowErrorModal] = useState(false);
 
   useEffect(() => {
     fetchDashboardData();
@@ -52,7 +53,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       }
     } catch (error: any) {
       console.error('❌ Dashboard: Failed to fetch dashboard data:', error);
-      setError(error.message || 'Failed to load dashboard data');
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to load dashboard data';
+      setError(errorMessage);
+      setShowErrorModal(true);
     } finally {
       setLoading(prev => ({ ...prev, counts: false }));
       console.log('🏁 Dashboard: Dashboard data fetching completed');
@@ -307,6 +310,38 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           </div>
         </div>
       </div>
+
+      {/* Error Modal */}
+      {showErrorModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="flex items-center mb-4">
+              <svg className="w-6 h-6 text-red-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <h3 className="text-lg font-semibold text-gray-900">Error</h3>
+            </div>
+            <p className="text-gray-600 mb-6">{error}</p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowErrorModal(false)}
+                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                Close
+              </button>
+              <button
+                onClick={() => {
+                  setShowErrorModal(false);
+                  fetchDashboardData();
+                }}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

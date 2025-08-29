@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Typography, Card, CardContent, CircularProgress } from '@mui/material';
 import { Business, People, Dashboard as DashboardIcon, TrendingUp } from '@mui/icons-material';
-import { adminService } from '../../services/axios';
+import { adminService } from '../../shared/services/services/axios';
 
 interface DashboardStats {
   totalOrganizations: number;

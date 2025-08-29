@@ -61,7 +61,7 @@ import {
   Cancel as CancelIcon,
   CheckCircle as CheckCircleIcon
 } from '@mui/icons-material';
-import { organizationService } from '../../services/organizationService';
+import { organizationService } from '../../shared/services/services/organizationService';
 import { GridLegacy as Grid } from "@mui/material";
 interface Driver {
   id: number;

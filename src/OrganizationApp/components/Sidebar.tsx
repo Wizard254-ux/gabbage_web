@@ -1,17 +1,19 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 interface SidebarProps {
-  activeTab: string;
-  setActiveTab: (tab: string) => void;
+  currentPath: string;
   isMobileMenuOpen: boolean;
   setIsMobileMenuOpen: (open: boolean) => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isMobileMenuOpen, setIsMobileMenuOpen }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ currentPath, isMobileMenuOpen, setIsMobileMenuOpen }) => {
+  const navigate = useNavigate();
   const menuItems = [
     { 
       id: 'dashboard', 
-      label: 'Dashboard', 
+      label: 'Dashboard',
+      path: '/organization/dashboard',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
@@ -21,7 +23,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isMob
     },
     { 
       id: 'drivers', 
-      label: 'Drivers', 
+      label: 'Drivers',
+      path: '/organization/dashboard/drivers',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2m-9 0h10m-10 0H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1" />
@@ -30,7 +33,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isMob
     },
     { 
       id: 'clients', 
-      label: 'Clients', 
+      label: 'Clients',
+      path: '/organization/dashboard/clients',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
@@ -39,7 +43,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isMob
     },
     { 
       id: 'routes', 
-      label: 'Routes', 
+      label: 'Routes',
+      path: '/organization/dashboard/routes',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
@@ -48,7 +53,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isMob
     },
     { 
       id: 'payments', 
-      label: 'Payments', 
+      label: 'Payments',
+      path: '/organization/dashboard/payments',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
@@ -57,7 +63,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isMob
     },
     { 
       id: 'invoices', 
-      label: 'Invoices', 
+      label: 'Invoices',
+      path: '/organization/dashboard/invoices',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -66,7 +73,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isMob
     },
     { 
       id: 'pickups', 
-      label: 'Pickups', 
+      label: 'Pickups',
+      path: '/organization/dashboard/pickups',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
@@ -75,7 +83,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isMob
     },
     { 
       id: 'bags', 
-      label: 'Bags', 
+      label: 'Bags',
+      path: '/organization/dashboard/bags',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l-1 12H6L5 9z" />
@@ -83,6 +92,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isMob
       )
     },
   ];
+
+  const isActive = (path: string) => {
+    return currentPath === path || (path === '/organization/dashboard' && currentPath === '/organization/dashboard');
+  };
 
   return (
     <>
@@ -133,23 +146,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isMob
             <button
               key={item.id}
               onClick={() => {
-                setActiveTab(item.id);
-                sessionStorage.setItem('activeTab', item.id);
+                navigate(item.path);
                 setIsMobileMenuOpen(false); // Close mobile menu when item is selected
               }}
               className={`w-full flex items-center space-x-3 px-3 py-3 rounded-lg text-left transition-all duration-200 group ${
-                activeTab === item.id 
+                isActive(item.path) 
                   ? 'bg-green-600 text-white shadow-md' 
                   : 'text-gray-300 hover:bg-gray-700 hover:text-white'
               }`}
             >
               <span className={`transition-all duration-200 ${
-                activeTab === item.id ? 'text-white' : 'text-gray-400 group-hover:text-green-400'
+                isActive(item.path) ? 'text-white' : 'text-gray-400 group-hover:text-green-400'
               }`}>
                 {item.icon}
               </span>
               <span className="font-medium flex-1 text-sm">{item.label}</span>
-              {activeTab === item.id && (
+              {isActive(item.path) && (
                 <div className="w-2 h-2 bg-white rounded-full"></div>
               )}
             </button>

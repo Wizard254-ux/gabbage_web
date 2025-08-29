@@ -57,12 +57,16 @@ export const PickupTable: React.FC<PickupTableProps> = ({
   const [selectedDriverId, setSelectedDriverId] = useState<string>('');
 
   // Function to format date
-  const formatDate = (dateString: string) => {
-    return format(new Date(dateString), 'dd/MM/yyyy');
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 'Invalid Date';
+    return format(date, 'dd/MM/yyyy');
   };
 
   // Function to get status badge color
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string | undefined | null) => {
+    if (!status) return 'bg-gray-500 text-white';
     switch (status.toLowerCase()) {
       case 'picked':
         return 'bg-green-500 text-white';
@@ -115,11 +119,21 @@ export const PickupTable: React.FC<PickupTableProps> = ({
             {pickups.map((pickup, index) => (
               <tr key={pickup.id} className="hover:bg-gray-50">
                 <td className="py-3 px-4 border-b">{startIndex + index + 1}</td>
-                <td className="py-3 px-4 border-b">{pickup.client.name}</td>
-                <td className="py-3 px-4 border-b">{pickup.route.name} - {pickup.route.path}</td>
-                <td className="py-3 px-4 border-b">{format(new Date(pickup.created_at), 'EEEE')}</td>
+                <td className="py-3 px-4 border-b">{pickup.client?.name || 'Unknown Client'}</td>
+                <td className="py-3 px-4 border-b">{pickup.route?.name || 'Unknown Route'} - {pickup.route?.path || ''}</td>
+                <td className="py-3 px-4 border-b">
+                  {pickup.created_at && !isNaN(new Date(pickup.created_at).getTime()) 
+                    ? format(new Date(pickup.created_at), 'EEEE') 
+                    : 'Unknown'
+                  }
+                </td>
                 <td className="py-3 px-4 border-b">{formatDate(pickup.pickup_date)}</td>
-                <td className="py-3 px-4 border-b"> {Math.ceil(new Date(pickup.created_at).getDate() / 7)}th of {format(new Date(pickup.created_at), 'MMMM')}</td>
+                <td className="py-3 px-4 border-b">
+                  {pickup.created_at && !isNaN(new Date(pickup.created_at).getTime()) 
+                    ? `${Math.ceil(new Date(pickup.created_at).getDate() / 7)}th of ${format(new Date(pickup.created_at), 'MMMM')}` 
+                    : 'Unknown'
+                  }
+                </td>
                 <td className="py-3 px-4 border-b">
                   {editingPickup === pickup.id.toString() ? (
                     <select
@@ -133,7 +147,7 @@ export const PickupTable: React.FC<PickupTableProps> = ({
                     </select>
                   ) : (
                     <span className={`px-2 py-1 text-xs rounded-full ${getStatusBadge(pickup.pickup_status)}`}>
-                      {pickup.pickup_status.charAt(0).toUpperCase() + pickup.pickup_status.slice(1)}
+                      {pickup.pickup_status ? pickup.pickup_status.charAt(0).toUpperCase() + pickup.pickup_status.slice(1) : 'Unknown'}
                     </span>
                   )}
                 </td>
@@ -145,11 +159,11 @@ export const PickupTable: React.FC<PickupTableProps> = ({
                       className="border border-gray-300 rounded px-2 py-1 text-sm"
                     >
                       <option value="">Unassigned</option>
-                      {drivers.map(driver => (
-                        <option key={driver.id} value={driver.id}>
-                          {driver.name}
+                      {drivers?.map(driver => (
+                        <option key={driver?.id} value={driver?.id}>
+                          {driver?.name || 'Unknown Driver'}
                         </option>
-                      ))}
+                      )) || []}
                     </select>
                   ) : (
                     pickup.driver?.name || 'Unassigned'

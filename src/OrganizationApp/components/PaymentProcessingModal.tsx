@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { organizationService } from '../../services/organizationService';
+import { organizationService } from '../../shared/services/services/organizationService';
 
 interface PaymentProcessingModalProps {
   isOpen: boolean;

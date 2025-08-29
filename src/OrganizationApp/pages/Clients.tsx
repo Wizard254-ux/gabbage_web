@@ -67,7 +67,7 @@ import {
   Today as TodayIcon,
   LocalShipping as BagIcon
 } from '@mui/icons-material';
-import { organizationService } from '../../services/organizationService';
+import { organizationService } from '../../shared/services/services/organizationService';
 
 interface Client {
   id: number;
