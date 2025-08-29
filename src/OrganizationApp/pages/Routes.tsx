@@ -861,8 +861,8 @@ export const Routes: React.FC = () => {
               disabled={creatingRoute}
               startIcon={creatingRoute ? <CircularProgress size={20} /> : <AddIcon />}
               sx={{
-                background: 'linear-gradient(45deg, #9C27B0 30%, #7B1FA2 90%)',
-                boxShadow: '0 3px 5px 2px rgba(156, 39, 176, .3)',
+                background: 'linear-gradient(45deg, #4CAF50 30%, #45A049 90%)',
+                boxShadow: '0 3px 5px 2px rgba(76, 175, 80, .3)',
               }}
             >
               {creatingRoute ? 'Creating...' : 'Create Route'}

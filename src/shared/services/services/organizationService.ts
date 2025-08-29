@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { handleApiError } from '../../utils/errorHandler';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -48,6 +49,9 @@ api.interceptors.response.use(
       window.location.href = '/login';
       return Promise.reject(error);
     }
+    
+    // Add user-friendly error message
+    error.userMessage = handleApiError(error);
     
     return Promise.reject(error);
   }
@@ -295,6 +299,7 @@ export const organizationService = {
 
   deleteClientDocument: async (clientId, documentPath) => {
     console.log('📄 Deleting document for client ID:', clientId, 'path:', documentPath);
+    console.log('📄 Request data:', { documentPath });
     const response = await api.delete(`/organization/clients/${clientId}/documents`, {
       data: { documentPath }
     });

@@ -7,6 +7,17 @@ interface AgingBucket {
   percentage: number;
 }
 
+interface ClientAging {
+  clientId: number;
+  clientName: string;
+  current: number;
+  days1to30: number;
+  days31to60: number;
+  days61to90: number;
+  days90plus: number;
+  total: number;
+}
+
 interface AgingSummary {
   totalUnpaidAmount: number;
   totalInvoices: number;
@@ -15,6 +26,7 @@ interface AgingSummary {
   dueCount: number;
   dueAmount: number;
   agingBuckets: AgingBucket[];
+  clientAging?: ClientAging[];
   gracePeriodDays: number;
   message?: string;
 }
@@ -96,110 +108,97 @@ export const AgingSummaryTable: React.FC<AgingSummaryTableProps> = ({
               </div>
             </div>
 
-            {/* Aging Table */}
-            <div className="overflow-x-auto">
-              <table className="min-w-full">
-                <thead>
-                  <tr className="bg-gray-50">
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Age Range (Days Overdue)
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Count
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Amount Outstanding
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      % of Total
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Visual Distribution
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {agingBuckets.map((bucket, index) => {
-                    const colors = getColorClasses(index, bucket.count > 0);
-                    return (
-                      <tr key={bucket.range} className={colors.rowClass}>
-                        <td className="px-4 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className={`w-3 h-3 rounded-full mr-3 ${colors.indicatorClass}`}></div>
-                            <div className={`text-sm font-medium ${colors.textClass}`}>
-                              {bucket.range}
-                            </div>
-                          </div>
+            {/* Client Aging Details Table */}
+            {summary.clientAging && summary.clientAging.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Client Aging Details</h3>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full bg-white border border-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                          Client
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                          Current
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                          1-30 Days
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                          31-60 Days
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                          61-90 Days
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                          90 Days
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                          Total
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {summary.clientAging.map((client) => (
+                        <tr key={client.clientId} className="hover:bg-gray-50">
+                          <td className="px-4 py-3 text-sm font-medium text-gray-900 border-b">
+                            {client.clientName}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-right text-gray-900 border-b">
+                            {client.current > 0 ? formatCurrency(client.current) : '-'}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-right text-yellow-700 border-b">
+                            {client.days1to30 > 0 ? formatCurrency(client.days1to30) : '-'}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-right text-orange-700 border-b">
+                            {client.days31to60 > 0 ? formatCurrency(client.days31to60) : '-'}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-right text-red-700 border-b">
+                            {client.days61to90 > 0 ? formatCurrency(client.days61to90) : '-'}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-right text-red-900 border-b font-semibold">
+                            {client.days90plus > 0 ? formatCurrency(client.days90plus) : '-'}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-right text-gray-900 border-b font-bold">
+                            {formatCurrency(client.total)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot className="bg-gray-100">
+                      <tr>
+                        <td className="px-4 py-3 text-sm font-bold text-gray-900 border-t">
+                          TOTALS
                         </td>
-                        <td className="px-4 py-4 whitespace-nowrap">
-                          <div className={`text-sm ${colors.textClass}`}>
-                            {bucket.count}
-                          </div>
+                        <td className="px-4 py-3 text-sm text-right font-bold text-gray-900 border-t">
+                          {formatCurrency(summary.clientAging.reduce((sum, c) => sum + c.current, 0))}
                         </td>
-                        <td className="px-4 py-4 whitespace-nowrap">
-                          <div className={`text-sm font-medium ${colors.textClass}`}>
-                            {formatCurrency(bucket.totalAmount)}
-                          </div>
+                        <td className="px-4 py-3 text-sm text-right font-bold text-yellow-700 border-t">
+                          {formatCurrency(summary.clientAging.reduce((sum, c) => sum + c.days1to30, 0))}
                         </td>
-                        <td className="px-4 py-4 whitespace-nowrap">
-                          <div className={`text-sm ${colors.textClass}`}>
-                            {bucket.percentage.toFixed(1)}%
-                          </div>
+                        <td className="px-4 py-3 text-sm text-right font-bold text-orange-700 border-t">
+                          {formatCurrency(summary.clientAging.reduce((sum, c) => sum + c.days31to60, 0))}
                         </td>
-                        <td className="px-4 py-4 whitespace-nowrap">
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div 
-                              className={`h-2 rounded-full ${colors.indicatorClass}`}
-                              style={{ width: `${bucket.percentage}%` }}
-                            ></div>
-                          </div>
+                        <td className="px-4 py-3 text-sm text-right font-bold text-red-700 border-t">
+                          {formatCurrency(summary.clientAging.reduce((sum, c) => sum + c.days61to90, 0))}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-right font-bold text-red-900 border-t">
+                          {formatCurrency(summary.clientAging.reduce((sum, c) => sum + c.days90plus, 0))}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-right font-bold text-gray-900 border-t">
+                          {formatCurrency(summary.clientAging.reduce((sum, c) => sum + c.total, 0))}
                         </td>
                       </tr>
-                    );
-                  })}
-                </tbody>
-                <tfoot className="bg-gray-50">
-                  <tr>
-                    <td className="px-4 py-3 text-sm font-bold text-gray-900">
-                      Total Outstanding
-                    </td>
-                    <td className="px-4 py-3 text-sm font-bold text-gray-900">
-                      {totalCount}
-                    </td>
-                    <td className="px-4 py-3 text-sm font-bold text-gray-900">
-                      {formatCurrency(totalUnpaidAmount)}
-                    </td>
-                    <td className="px-4 py-3 text-sm font-bold text-gray-900">
-                      100.0%
-                    </td>
-                    <td className="px-4 py-3"></td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-
-            {/* Collection Priority Alert */}
-            {agingBuckets[3] && agingBuckets[3].count > 0 && (
-              <div className="mt-4 bg-red-50 border border-red-200 rounded-md p-4">
-                <div className="flex">
-                  <div className="flex-shrink-0">
-                    <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                  <div className="ml-3">
-                    <h3 className="text-sm font-medium text-red-800">
-                      High Priority Collection Required
-                    </h3>
-                    <div className="mt-2 text-sm text-red-700">
-                      You have {agingBuckets[3].count} invoice(s) overdue by more than 90 days, 
-                      totaling {formatCurrency(agingBuckets[3].totalAmount)}. 
-                      These require immediate attention for debt recovery.
-                    </div>
-                  </div>
+                    </tfoot>
+                  </table>
                 </div>
               </div>
             )}
+
+
+
+
           </>
         )}
         

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { organizationService } from '../../shared/services/services/organizationService';
 import { PaymentHistoryTable } from '../components/PaymentHistoryTable';
 import { PaymentProcessingModal } from '../components/PaymentProcessingModal';
+import { handleApiError } from '../../shared/utils/errorHandler';
 
 interface Payment {
   _id: string;
@@ -65,6 +66,7 @@ export const Payments: React.FC = () => {
       }
     } catch (error) {
       console.error('Failed to fetch payment history:', error);
+      handleApiError(error, (message) => alert(message));
     } finally {
       setLoading(false);
     }
@@ -104,6 +106,7 @@ export const Payments: React.FC = () => {
       }
     } catch (error) {
       console.error('Failed to fetch all payments:', error);
+      handleApiError(error, (message) => alert(message));
     } finally {
       setLoading(false);
     }
@@ -125,7 +128,7 @@ export const Payments: React.FC = () => {
       setShowExportModal(false);
     } catch (error) {
       console.error('Failed to export payments:', error);
-      alert('Failed to export payments');
+      handleApiError(error, (message) => alert(message));
     } finally {
       setExportingPayments(false);
     }

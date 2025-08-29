@@ -138,7 +138,7 @@ export const PaymentHistoryTable: React.FC<PaymentHistoryTableProps> = ({
             <tr>
               <th className="py-3 px-4 border-b text-left">#</th>
               <th className="py-3 px-4 border-b text-left">Date</th>
-              <th className="py-3 px-4 border-b text-left">Client Name</th>
+              <th className="py-3 px-4 border-b text-left">Client</th>
               <th className="py-3 px-4 border-b text-left">Account</th>
               <th className="py-3 px-4 border-b text-left">Amount</th>
               <th className="py-3 px-4 border-b text-left">Method</th>
@@ -146,9 +146,9 @@ export const PaymentHistoryTable: React.FC<PaymentHistoryTableProps> = ({
               <th className="py-3 px-4 border-b text-left">Phone</th>
               <th className="py-3 px-4 border-b text-left">Invoice</th>
               <th className="py-3 px-4 border-b text-left">Status</th>
-              <th className="py-3 px-4 border-b text-left">Allocation Status</th>
-              <th className="py-3 px-4 border-b text-left">Allocated Amount</th>
-              <th className="py-3 px-4 border-b text-left">Remaining Amount</th>
+              {/* <th className="py-3 px-4 border-b text-left">Allocation Status</th> */}
+              <th className="py-3 px-4 border-b text-left">Allocated </th>
+              <th className="py-3 px-4 border-b text-left">Remaining </th>
             </tr>
           </thead>
           <tbody>
@@ -186,7 +186,7 @@ export const PaymentHistoryTable: React.FC<PaymentHistoryTableProps> = ({
                     {payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}
                   </span>
                 </td>
-                <td className="py-3 px-4 border-b">
+                {/* <td className="py-3 px-4 border-b">
                   <span className={`font-medium ${
                     payment.status === 'fully_allocated' ? 'text-green-600' :
                     payment.status === 'partially_allocated' ? 'text-yellow-600' :
@@ -194,7 +194,7 @@ export const PaymentHistoryTable: React.FC<PaymentHistoryTableProps> = ({
                   }`}>
                     {formatAllocationStatus(payment.status)}
                   </span>
-                </td>
+                </td> */}
                 <td className="py-3 px-4 border-b">
                   <span className="font-medium text-blue-600">
                     KSH {parseFloat(payment.allocated_amount || '0').toLocaleString()}

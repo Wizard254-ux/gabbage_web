@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { organizationService } from '../../shared/services/services/organizationService';
 import { PickupTable } from '../components/PickupTable';
+import { handleApiError } from '../../shared/utils/errorHandler';
 
 interface Pickup {
   _id: string;
@@ -70,6 +71,7 @@ export const Pickups: React.FC = () => {
   const [selectedRouteId, setSelectedRouteId] = useState<string>('');
   const [selectedDriverId, setSelectedDriverId] = useState<string>('');
   const [selectedPickupDay, setSelectedPickupDay] = useState<string>('');
+  const [clientNameFilter, setClientNameFilter] = useState<string>('');
 
   const fetchPickups = async (page: number = 1) => {
     setLoading(true);
@@ -85,6 +87,7 @@ export const Pickups: React.FC = () => {
       if (selectedRouteId) params.route_id = selectedRouteId;
       if (selectedDriverId) params.driver_id = selectedDriverId;
       if (selectedPickupDay) params.pickup_day = selectedPickupDay;
+      if (clientNameFilter) params.client_name = clientNameFilter;
       
       console.log('Filter states:', { status, startDate, endDate, selectedRouteId, selectedDriverId, selectedPickupDay });
       console.log('Final params:', params);
@@ -120,7 +123,7 @@ export const Pickups: React.FC = () => {
         setError('Failed to fetch pickups');
       }
     } catch (err: any) {
-      setError(err.message || 'An error occurred while fetching pickups');
+      handleApiError(err, (message) => setError(message));
     } finally {
       setLoading(false);
     }
@@ -135,6 +138,7 @@ export const Pickups: React.FC = () => {
       }
     } catch (err) {
       console.error('Failed to fetch routes:', err);
+      handleApiError(err, (message) => console.error('Route fetch error:', message));
     }
   };
 
@@ -147,6 +151,7 @@ export const Pickups: React.FC = () => {
       }
     } catch (err) {
       console.error('Failed to fetch drivers:', err);
+      handleApiError(err, (message) => console.error('Driver fetch error:', message));
     }
   };
 
@@ -173,6 +178,7 @@ export const Pickups: React.FC = () => {
     setSelectedRouteId('');
     setSelectedDriverId('');
     setSelectedPickupDay('');
+    setClientNameFilter('');
     fetchPickups(1);
   };
 
@@ -193,6 +199,7 @@ export const Pickups: React.FC = () => {
       }
     } catch (err) {
       console.error('Failed to fetch clients:', err);
+      handleApiError(err, (message) => console.error('Client fetch error:', message));
     }
   };
 
@@ -220,7 +227,7 @@ export const Pickups: React.FC = () => {
         setSearchedClients([]);
       }
     } catch (err: any) {
-      alert('Failed to create pickup: ' + (err.response?.data?.message || err.message));
+      handleApiError(err, (message) => alert('Failed to create pickup: ' + message));
     } finally {
       setLoading(false);
     }
@@ -236,6 +243,7 @@ export const Pickups: React.FC = () => {
       }
     } catch (err) {
       console.error('Failed to search clients:', err);
+      handleApiError(err, (message) => console.error('Client search error:', message));
     }
   };
 
@@ -245,6 +253,7 @@ export const Pickups: React.FC = () => {
       fetchPickups(pagination.currentPage); // Refresh current page
     } catch (err) {
       console.error('Failed to update pickup status:', err);
+      handleApiError(err, (message) => alert('Failed to update pickup status: ' + message));
     }
   };
 
@@ -318,6 +327,16 @@ export const Pickups: React.FC = () => {
                     </option>
                   ))}
                 </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Client Name</label>
+                <input
+                  type="text"
+                  value={clientNameFilter}
+                  onChange={(e) => setClientNameFilter(e.target.value)}
+                  placeholder="Search by client name"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Pickup Day</label>

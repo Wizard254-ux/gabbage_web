@@ -46,6 +46,7 @@ import {
   MoreVert as MoreVertIcon
 } from '@mui/icons-material';
 import { organizationService } from '../../shared/services/services/organizationService';
+import { handleApiError } from '../../shared/utils/errorHandler';
 
 interface BagIssue {
   id: number;
@@ -128,6 +129,7 @@ const Bags: React.FC = () => {
       setCurrentPage(page);
     } catch (error) {
       console.error('Failed to fetch bag distribution history:', error);
+      handleApiError(error, (message) => setToast({ open: true, message, severity: 'error' }));
       setBagIssues([]);
     } finally {
       setLoading(false);
@@ -141,6 +143,7 @@ const Bags: React.FC = () => {
       setClients(response.data.users || []);
     } catch (error) {
       console.error('Failed to fetch clients:', error);
+      handleApiError(error, (message) => setToast({ open: true, message, severity: 'error' }));
     }
   };
 
@@ -151,6 +154,7 @@ const Bags: React.FC = () => {
       setDrivers(response.data.data.users || []);
     } catch (error) {
       console.error('Failed to fetch drivers:', error);
+      handleApiError(error, (message) => setToast({ open: true, message, severity: 'error' }));
     }
   };
 
@@ -162,6 +166,7 @@ const Bags: React.FC = () => {
       setDriverAllocations(response.data.data?.driver_allocations || []);
     } catch (error) {
       console.error('Failed to fetch bag inventory:', error);
+      handleApiError(error, (message) => setToast({ open: true, message, severity: 'error' }));
     }
   };
 
@@ -171,6 +176,7 @@ const Bags: React.FC = () => {
       setBagTransfers(response.data.data || []);
     } catch (error) {
       console.error('Failed to fetch bag transfers:', error);
+      handleApiError(error, (message) => setToast({ open: true, message, severity: 'error' }));
       setBagTransfers([]);
     }
   };
@@ -185,6 +191,7 @@ const Bags: React.FC = () => {
       setDriverAllocations(response.data.data?.driver_allocations || []);
     } catch (error) {
       console.error('Failed to fetch driver allocations:', error);
+      handleApiError(error, (message) => setToast({ open: true, message, severity: 'error' }));
     } finally {
       setSearchingDrivers(false);
     }
@@ -233,6 +240,7 @@ const Bags: React.FC = () => {
       setCurrentPage(1);
     } catch (error) {
       console.error('Failed to search bag issues:', error);
+      handleApiError(error, (message) => setToast({ open: true, message, severity: 'error' }));
     } finally {
       setSearchingBagIssues(false);
     }
@@ -259,7 +267,7 @@ const Bags: React.FC = () => {
       setToast({ open: true, message: `Successfully added ${addBags} bags to inventory`, severity: 'success' });
       fetchBagInventory();
     } catch (error) {
-      setToast({ open: true, message: 'Failed to add bags', severity: 'error' });
+      handleApiError(error, (message) => setToast({ open: true, message, severity: 'error' }));
     } finally {
       setActionLoading(false);
     }
@@ -278,7 +286,7 @@ const Bags: React.FC = () => {
       setToast({ open: true, message: `Successfully removed ${removeBags} bags from inventory`, severity: 'success' });
       fetchBagInventory();
     } catch (error) {
-      setToast({ open: true, message: 'Failed to remove bags', severity: 'error' });
+      handleApiError(error, (message) => setToast({ open: true, message, severity: 'error' }));
     } finally {
       setActionLoading(false);
     }
@@ -422,7 +430,7 @@ const Bags: React.FC = () => {
       setToast({ open: true, message: `Successfully allocated ${allocateBags} bags to ${driverName}`, severity: 'success' });
       fetchBagInventory();
     } catch (error) {
-      setToast({ open: true, message: 'Failed to allocate bags', severity: 'error' });
+      handleApiError(error, (message) => setToast({ open: true, message, severity: 'error' }));
     } finally {
       setActionLoading(false);
     }
@@ -546,7 +554,7 @@ const Bags: React.FC = () => {
       {/* Tabs */}
       <Card sx={{ mb: 3 }}>
         <Tabs value={activeTab} onChange={(e, newValue) => setActiveTab(newValue)}>
-          <Tab label="Bag Issues" />
+          <Tab label="Client Allocation" />
           <Tab label="Driver Allocations" />
           <Tab label="Bag Transfers" />
         </Tabs>

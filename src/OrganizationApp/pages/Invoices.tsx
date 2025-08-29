@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { organizationService } from '../../shared/services/services/organizationService';
 import { InvoiceTable } from '../components/InvoiceTable';
 import { AgingSummaryTable } from '../components/AgingSummaryTable';
+import { handleApiError } from '../../shared/utils/errorHandler';
 
 interface Invoice {
   id: number;
@@ -14,7 +16,7 @@ interface Invoice {
   due_date: string;
   description: string;
   status: string;
-  payment_ids: number[] | null;
+  payment_trans_ids: string[] | null;
   paid_amount: string;
   payment_status: string;
   created_at: string;
@@ -62,6 +64,7 @@ interface InvoicesProps {
 }
 
 export const Invoices: React.FC<InvoicesProps> = ({ onNavigate }) => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'all' | 'aging'>('all');
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [agingSummary, setAgingSummary] = useState<AgingSummary | null>(null);
@@ -117,8 +120,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ onNavigate }) => {
         setError('Failed to fetch invoices');
       }
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'An error occurred while fetching invoices';
-      setError(errorMessage);
+      handleApiError(err, (message) => setError(message));
     } finally {
       setLoading(false);
     }
@@ -137,8 +139,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ onNavigate }) => {
         setError('Failed to fetch aging summary');
       }
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'An error occurred while fetching aging summary';
-      setError(errorMessage);
+      handleApiError(err, (message) => setError(message));
     } finally {
       setLoading(false);
     }
@@ -219,34 +220,31 @@ export const Invoices: React.FC<InvoicesProps> = ({ onNavigate }) => {
       document.body.removeChild(a);
     } catch (error) {
       console.error('Failed to export invoices:', error);
-      alert('Failed to export invoices. Please try again.');
+      handleApiError(error, (message) => alert(message));
     } finally {
       setExportingInvoices(false);
     }
   };
 
   const handleExportAgingSummary = async (format: 'csv' | 'pdf') => {
-    if (!agingSummary) return;
+    if (!agingSummary || !agingSummary.clientAging) return;
     
     setExportingAging(true);
     try {
       if (format === 'csv') {
         const csvData = [
-          'Aging Summary Report',
+          'Client Aging Report',
           `Generated on: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}`,
           '',
-          'Age Range,Count,Amount Outstanding,Percentage of Total',
-          ...agingSummary.agingBuckets.map(bucket => 
-            `"${bucket.range}",${bucket.count},"KES ${bucket.totalAmount.toLocaleString()}","${bucket.percentage.toFixed(1)}%"`
+          'Client,Current,1-30 Days,31-60 Days,61-90 Days,>90 Days,Total',
+          ...agingSummary.clientAging.map(client => 
+            `"${client.clientName}","KES ${client.current.toLocaleString()}","KES ${client.days1to30.toLocaleString()}","KES ${client.days31to60.toLocaleString()}","KES ${client.days61to90.toLocaleString()}","KES ${client.days90plus.toLocaleString()}","KES ${client.total.toLocaleString()}"`
           ),
-          `"Total Outstanding",${agingSummary.agingBuckets.reduce((sum, bucket) => sum + bucket.count, 0)},"KES ${agingSummary.totalUnpaidAmount.toLocaleString()}","100.0%"`,
-          '',
-          'Notes:',
-          agingSummary.message || `Aging calculation starts after ${agingSummary.gracePeriodDays}-day grace period from due date`
+          `"TOTALS","KES ${agingSummary.clientAging.reduce((sum, c) => sum + c.current, 0).toLocaleString()}","KES ${agingSummary.clientAging.reduce((sum, c) => sum + c.days1to30, 0).toLocaleString()}","KES ${agingSummary.clientAging.reduce((sum, c) => sum + c.days31to60, 0).toLocaleString()}","KES ${agingSummary.clientAging.reduce((sum, c) => sum + c.days61to90, 0).toLocaleString()}","KES ${agingSummary.clientAging.reduce((sum, c) => sum + c.days90plus, 0).toLocaleString()}","KES ${agingSummary.clientAging.reduce((sum, c) => sum + c.total, 0).toLocaleString()}"`
         ].join('\n');
 
         const blob = new Blob([csvData], { type: 'text/csv' });
-        const filename = `aging_summary_export_${new Date().getTime()}.csv`;
+        const filename = `client_aging_${new Date().getTime()}.csv`;
         
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -259,63 +257,56 @@ export const Invoices: React.FC<InvoicesProps> = ({ onNavigate }) => {
       } else {
         // Generate PDF using jsPDF
         const { jsPDF } = await import('jspdf');
-        const doc = new jsPDF();
+        const { default: autoTable } = await import('jspdf-autotable');
+        const doc = new jsPDF('landscape');
         
         // Title
         doc.setFontSize(18);
-        doc.text('Aging Summary Report', 20, 20);
+        doc.text('Client Aging Report', 20, 20);
         
         // Date
         doc.setFontSize(10);
         doc.text(`Generated on: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}`, 20, 30);
         
-        // Summary stats
-        doc.setFontSize(12);
-        doc.text('Summary Statistics:', 20, 45);
-        doc.setFontSize(10);
-        doc.text(`Total Overdue Invoices: ${agingSummary.agingBuckets.reduce((sum, bucket) => sum + bucket.count, 0)}`, 20, 55);
-        doc.text(`Total Outstanding Amount: KES ${agingSummary.totalUnpaidAmount.toLocaleString()}`, 20, 65);
-        
-        // Table headers
-        doc.setFontSize(12);
-        doc.text('Age Bucket Breakdown:', 20, 80);
-        doc.setFontSize(10);
-        doc.text('Age Range', 20, 95);
-        doc.text('Count', 80, 95);
-        doc.text('Amount Outstanding', 110, 95);
-        doc.text('% of Total', 160, 95);
-        
         // Table data
-        let yPos = 105;
-        agingSummary.agingBuckets.forEach(bucket => {
-          doc.text(bucket.range, 20, yPos);
-          doc.text(bucket.count.toString(), 80, yPos);
-          doc.text(`KES ${bucket.totalAmount.toLocaleString()}`, 110, yPos);
-          doc.text(`${bucket.percentage.toFixed(1)}%`, 160, yPos);
-          yPos += 10;
+        const headers = ['Client', 'Current', '1-30 Days', '31-60 Days', '61-90 Days', '>90 Days', 'Total'];
+        const rows = [
+          ...agingSummary.clientAging.map(client => [
+            client.clientName,
+            `KES ${client.current.toLocaleString()}`,
+            `KES ${client.days1to30.toLocaleString()}`,
+            `KES ${client.days31to60.toLocaleString()}`,
+            `KES ${client.days61to90.toLocaleString()}`,
+            `KES ${client.days90plus.toLocaleString()}`,
+            `KES ${client.total.toLocaleString()}`
+          ]),
+          [
+            'TOTALS',
+            `KES ${agingSummary.clientAging.reduce((sum, c) => sum + c.current, 0).toLocaleString()}`,
+            `KES ${agingSummary.clientAging.reduce((sum, c) => sum + c.days1to30, 0).toLocaleString()}`,
+            `KES ${agingSummary.clientAging.reduce((sum, c) => sum + c.days31to60, 0).toLocaleString()}`,
+            `KES ${agingSummary.clientAging.reduce((sum, c) => sum + c.days61to90, 0).toLocaleString()}`,
+            `KES ${agingSummary.clientAging.reduce((sum, c) => sum + c.days90plus, 0).toLocaleString()}`,
+            `KES ${agingSummary.clientAging.reduce((sum, c) => sum + c.total, 0).toLocaleString()}`
+          ]
+        ];
+        
+        autoTable(doc, {
+          head: [headers],
+          body: rows,
+          startY: 40,
+          styles: { fontSize: 8 },
+          headStyles: { fillColor: [66, 139, 202] },
+          footStyles: { fillColor: [240, 240, 240], fontStyle: 'bold' }
         });
         
-        // Total row
-        yPos += 5;
-        doc.setFontSize(11);
-        doc.text('Total Outstanding', 20, yPos);
-        doc.text(agingSummary.agingBuckets.reduce((sum, bucket) => sum + bucket.count, 0).toString(), 80, yPos);
-        doc.text(`KES ${agingSummary.totalUnpaidAmount.toLocaleString()}`, 110, yPos);
-        doc.text('100.0%', 160, yPos);
-        
-        // Notes
-        yPos += 20;
-        doc.setFontSize(10);
-        doc.text('Notes:', 20, yPos);
-        doc.text(agingSummary.message || `Aging calculation starts after ${agingSummary.gracePeriodDays}-day grace period from due date`, 20, yPos + 10);
-        
-        doc.save(`aging_summary_${new Date().getTime()}.pdf`);
+        doc.save(`client_aging_${new Date().getTime()}.pdf`);
       }
       
       setShowExportDropdown(false);
     } catch (error) {
-      console.error(`Failed to export aging summary as ${format.toUpperCase()}:`, error);
-      alert(`Failed to export aging summary as ${format.toUpperCase()}. Please try again.`);
+      console.error(`Failed to export client aging as ${format.toUpperCase()}:`, error);
+      handleApiError(error, (message) => alert(message));
     } finally {
       setExportingAging(false);
     }
@@ -364,9 +355,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ onNavigate }) => {
   };
 
   const handleViewInvoice = (invoiceId: string) => {
-    if (onNavigate) {
-      onNavigate('invoice-details', { invoiceId });
-    }
+    navigate(`/organization/dashboard/invoices/${invoiceId}`);
   };
 
   return (

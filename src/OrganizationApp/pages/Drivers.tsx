@@ -62,6 +62,7 @@ import {
   CheckCircle as CheckCircleIcon
 } from '@mui/icons-material';
 import { organizationService } from '../../shared/services/services/organizationService';
+import { showErrorMessage } from '../../shared/utils/errorHandler';
 import { GridLegacy as Grid } from "@mui/material";
 interface Driver {
   id: number;
@@ -72,7 +73,7 @@ interface Driver {
   created_at: string;
   updated_at: string;
   isSent: number;
-  documents: string[];
+  documents: Array<string | {url: string, original_name: string, filename: string}>;
   address?: string;
   email_verified_at?: string;
   role: string;
@@ -340,6 +341,7 @@ export const Drivers: React.FC = () => {
       setShowSuccessSnackbar(true);
     } catch (error) {
       console.error('Failed to update driver:', error);
+      showErrorMessage(error);
     } finally {
       setUpdatingDriver(false);
     }
@@ -433,17 +435,58 @@ export const Drivers: React.FC = () => {
     }
   };
 
+  const [showDeleteDocumentDialog, setShowDeleteDocumentDialog] = useState(false);
+  const [documentToDelete, setDocumentToDelete] = useState<{driverId: string, documentPath: string} | null>(null);
+
   const handleDeleteDocument = async (driverId: string, documentPath: string) => {
-    if (window.confirm('Are you sure you want to delete this document?')) {
+    setDocumentToDelete({driverId, documentPath});
+    setShowDeleteDocumentDialog(true);
+  };
+
+  const confirmDeleteDocument = async () => {
+    if (!documentToDelete) return;
+    
+    setDeletingDocument(true);
+    try {
+      await organizationService.deleteDriverDocument(documentToDelete.driverId, documentToDelete.documentPath);
+
+      // Update selectedDriver immediately - handle both string and object formats
+      if (selectedDriver) {
+        const updatedDriver = {
+          ...selectedDriver,
+          documents: selectedDriver.documents?.filter(doc => {
+            const docUrl = typeof doc === 'string' ? doc : doc.url;
+            return docUrl !== documentToDelete.documentPath;
+          }) || []
+        };
+        setSelectedDriver(updatedDriver);
+      }
+
+      setSuccessMessage('Document deleted successfully!');
+      setShowSuccessSnackbar(true);
+      setShowDeleteDocumentDialog(false);
+      setDocumentToDelete(null);
+    } catch (error) {
+      console.error('Failed to delete document:', error);
+    } finally {
+      setDeletingDocument(false);
+    }
+  };
+
+  const handleDeleteDocumentOld = async (driverId: string, documentPath: string) => {
+    if (true) {
       setDeletingDocument(true);
       try {
         await organizationService.deleteDriverDocument(driverId, documentPath);
 
-        // Update selectedDriver immediately
+        // Update selectedDriver immediately - handle both string and object formats
         if (selectedDriver) {
           const updatedDriver = {
             ...selectedDriver,
-            documents: selectedDriver.documents?.filter(doc => doc !== documentPath) || []
+            documents: selectedDriver.documents?.filter(doc => {
+              const docUrl = typeof doc === 'string' ? doc : doc.url;
+              return docUrl !== documentPath;
+            }) || []
           };
           setSelectedDriver(updatedDriver);
         }
@@ -459,18 +502,58 @@ export const Drivers: React.FC = () => {
     }
   };
 
+  const [showDeleteDocumentEditDialog, setShowDeleteDocumentEditDialog] = useState(false);
+  const [documentToDeleteEdit, setDocumentToDeleteEdit] = useState<string | null>(null);
+
   const handleDeleteDocumentInEditMode = async (documentPath: string) => {
     if (!selectedDriver) return;
+    setDocumentToDeleteEdit(documentPath);
+    setShowDeleteDocumentEditDialog(true);
+  };
+
+  const confirmDeleteDocumentEdit = async () => {
+    if (!selectedDriver || !documentToDeleteEdit) return;
     
-    if (window.confirm('Are you sure you want to delete this document permanently?')) {
+    setDeletingDocument(true);
+    try {
+      await organizationService.deleteDriverDocument(selectedDriver.id, documentToDeleteEdit);
+
+      // Update the selectedDriver state to remove the document - handle both string and object formats
+      const updatedDriver = {
+        ...selectedDriver,
+        documents: selectedDriver.documents.filter(doc => {
+          const docUrl = typeof doc === 'string' ? doc : doc.url;
+          return docUrl !== documentToDeleteEdit;
+        })
+      };
+      setSelectedDriver(updatedDriver);
+      
+      setSuccessMessage('Document deleted successfully!');
+      setShowSuccessSnackbar(true);
+      setShowDeleteDocumentEditDialog(false);
+      setDocumentToDeleteEdit(null);
+    } catch (error) {
+      console.error('Error deleting document:', error);
+    } finally {
+      setDeletingDocument(false);
+    }
+  };
+
+  const handleDeleteDocumentInEditModeOld = async (documentPath: string) => {
+    if (!selectedDriver) return;
+    
+    if (true) {
       setDeletingDocument(true);
       try {
         await organizationService.deleteDriverDocument(selectedDriver.id, documentPath);
 
-        // Update the selectedDriver state to remove the document
+        // Update the selectedDriver state to remove the document - handle both string and object formats
         const updatedDriver = {
           ...selectedDriver,
-          documents: selectedDriver.documents.filter(doc => doc !== documentPath)
+          documents: selectedDriver.documents.filter(doc => {
+            const docUrl = typeof doc === 'string' ? doc : doc.url;
+            return docUrl !== documentPath;
+          })
         };
         setSelectedDriver(updatedDriver);
         
@@ -497,8 +580,8 @@ export const Drivers: React.FC = () => {
       }
 
       await organizationService.editDriverWithDocuments(selectedDriver.id, formData);
-
-      // Fetch fresh driver details to get updated documents
+      
+      // Fetch fresh driver details to get updated documents with proper URLs
       const response = await organizationService.getDriverDetails(selectedDriver.id);
       if (response.data && response.data.data && response.data.data.driver) {
         const updatedDriver = {
@@ -510,6 +593,10 @@ export const Drivers: React.FC = () => {
       }
 
       setNewDocumentsFiles(null);
+      // Clear the file input
+      const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+      if (fileInput) fileInput.value = '';
+      
       setSuccessMessage('Documents added successfully!');
       setShowSuccessSnackbar(true);
     } catch (error) {
@@ -1020,6 +1107,7 @@ export const Drivers: React.FC = () => {
               disabled={addingDriver}
               startIcon={addingDriver ? <CircularProgress size={20} /> : <AddIcon />}
               onClick={handleAdd}
+              sx={{ bgcolor: 'success.main', '&:hover': { bgcolor: 'success.dark' } }}
             >
               {addingDriver ? 'Adding...' : 'Add Driver'}
             </Button>
@@ -1097,8 +1185,9 @@ export const Drivers: React.FC = () => {
 <Box sx={{ maxHeight: 300, overflow: 'auto' }}>
   <List>
     {selectedDriver.documents.map((doc, index) => {
-      const fileName = doc.split('/').pop() || `Document ${index + 1}`;
-      const isMarkedForDeletion = documentsToDelete.includes(doc);
+      const fileName = typeof doc === 'string' ? doc.split('/').pop() || `Document ${index + 1}` : doc.original_name || doc.filename || `Document ${index + 1}`;
+      const docUrl = typeof doc === 'string' ? doc : doc.url;
+      const isMarkedForDeletion = documentsToDelete.includes(docUrl);
 
       return (
         <ListItem
@@ -1138,7 +1227,7 @@ export const Drivers: React.FC = () => {
           <Box sx={{ display: 'flex', gap: 1, ml: 'auto' }}>
             <IconButton
               size="small"
-              onClick={() => window.open(organizationService.getSecureDocumentUrl(doc), '_blank')}
+              onClick={() => window.open(organizationService.getSecureDocumentUrl(docUrl), '_blank')}
               sx={{ color: 'primary.main' }}
             >
               <VisibilityIcon />
@@ -1147,7 +1236,7 @@ export const Drivers: React.FC = () => {
               size="small"
               onClick={async () => {
                 try {
-                  const response = await fetch(organizationService.getSecureDocumentUrl(doc));
+                  const response = await fetch(organizationService.getSecureDocumentUrl(docUrl));
                   const blob = await response.blob();
                   const url = window.URL.createObjectURL(blob);
                   const link = document.createElement('a');
@@ -1165,7 +1254,7 @@ export const Drivers: React.FC = () => {
             </IconButton>
             <IconButton
               size="small"
-              onClick={() => handleDeleteDocumentInEditMode(doc)}
+              onClick={() => handleDeleteDocumentInEditMode(docUrl)}
               color="error"
               disabled={deletingDocument}
             >
@@ -1411,7 +1500,8 @@ export const Drivers: React.FC = () => {
 
     <Grid container spacing={3}>
       {selectedDriver.documents.map((doc, index) => {
-        const fileName = doc.split('/').pop() || `Document ${index + 1}`;
+        const fileName = typeof doc === 'string' ? doc.split('/').pop() || `Document ${index + 1}` : doc.original_name || doc.filename || `Document ${index + 1}`;
+        const docUrl = typeof doc === 'string' ? doc : doc.url;
         const isImage = isImageFile(fileName);
 
         return (
@@ -1449,7 +1539,7 @@ export const Drivers: React.FC = () => {
                 {isImage ? (
                   <Box sx={{ position: 'relative', height: '100%' }}>
                     <img
-                      src={doc}
+                      src={docUrl}
                       alt={fileName}
                       style={{
                         width: '100%',
@@ -1570,7 +1660,7 @@ export const Drivers: React.FC = () => {
                   <Button
                     size="small"
                     variant="contained"
-                    onClick={() => window.open(organizationService.getSecureDocumentUrl(doc), '_blank')}
+                    onClick={() => window.open(organizationService.getSecureDocumentUrl(docUrl), '_blank')}
                     startIcon={<VisibilityIcon />}
                     sx={{
                       flex: 1,
@@ -1594,7 +1684,7 @@ export const Drivers: React.FC = () => {
                     variant="outlined"
                     onClick={async () => {
                       try {
-                        const response = await fetch(organizationService.getSecureDocumentUrl(doc));
+                        const response = await fetch(organizationService.getSecureDocumentUrl(docUrl));
                         const blob = await response.blob();
                         const url = window.URL.createObjectURL(blob);
                         const link = document.createElement('a');
@@ -1630,7 +1720,7 @@ export const Drivers: React.FC = () => {
                       size="small"
                       variant="outlined"
                       color="error"
-                      onClick={() => handleDeleteDocument(selectedDriver.id, doc)}
+                      onClick={() => handleDeleteDocument(selectedDriver.id, docUrl)}
                       startIcon={deletingDocument ? <CircularProgress size={16} /> : <DeleteIcon />}
                       disabled={deletingDocument}
                       sx={{
@@ -1867,6 +1957,54 @@ export const Drivers: React.FC = () => {
             startIcon={deleting ? <CircularProgress size={20} /> : <DeleteIcon />}
           >
             {deleting ? 'Deleting...' : 'Delete'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Document Confirmation Dialog */}
+      <Dialog open={showDeleteDocumentDialog} onClose={() => !deletingDocument && setShowDeleteDocumentDialog(false)}>
+        <DialogTitle>Delete Document</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to delete this document? This action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowDeleteDocumentDialog(false)} disabled={deletingDocument}>
+            Cancel
+          </Button>
+          <Button 
+            onClick={confirmDeleteDocument} 
+            color="error" 
+            variant="contained"
+            disabled={deletingDocument}
+            startIcon={deletingDocument ? <CircularProgress size={20} /> : <DeleteIcon />}
+          >
+            {deletingDocument ? 'Deleting...' : 'Delete'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Document Edit Mode Confirmation Dialog */}
+      <Dialog open={showDeleteDocumentEditDialog} onClose={() => !deletingDocument && setShowDeleteDocumentEditDialog(false)}>
+        <DialogTitle>Delete Document</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to delete this document permanently? This action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowDeleteDocumentEditDialog(false)} disabled={deletingDocument}>
+            Cancel
+          </Button>
+          <Button 
+            onClick={confirmDeleteDocumentEdit} 
+            color="error" 
+            variant="contained"
+            disabled={deletingDocument}
+            startIcon={deletingDocument ? <CircularProgress size={20} /> : <DeleteIcon />}
+          >
+            {deletingDocument ? 'Deleting...' : 'Delete'}
           </Button>
         </DialogActions>
       </Dialog>

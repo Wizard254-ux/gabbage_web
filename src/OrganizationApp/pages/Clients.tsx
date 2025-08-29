@@ -68,6 +68,7 @@ import {
   LocalShipping as BagIcon
 } from '@mui/icons-material';
 import { organizationService } from '../../shared/services/services/organizationService';
+import { showErrorMessage } from '../../shared/utils/errorHandler';
 
 interface Client {
   id: number;
@@ -94,7 +95,7 @@ interface Client {
   accountNumber: string;
   gracePeriod: number;
   serviceStartDate: string;
-  documents: string[];
+  documents: Array<string | {url: string, original_name: string, filename: string}>;
 }
 
 interface TabPanelProps {
@@ -171,6 +172,10 @@ export const Clients: React.FC = () => {
     due_date: '',
     description: ''
   });
+  const [showDeleteDocumentDialog, setShowDeleteDocumentDialog] = useState(false);
+  const [documentToDelete, setDocumentToDelete] = useState<{clientId: string, documentPath: string} | null>(null);
+  const [showDeleteDocumentEditDialog, setShowDeleteDocumentEditDialog] = useState(false);
+  const [documentToDeleteEdit, setDocumentToDeleteEdit] = useState<string | null>(null);
 
   // Export functions
   const exportToCSV = (data: any[], filename: string, headers: string[]) => {
@@ -471,9 +476,12 @@ export const Clients: React.FC = () => {
 
   const handleEdit = async (client: Client) => {
     handleMenuClose();
-    
-    // Show dialog immediately with basic data
-    setSelectedClient(client);
+    setShowEditModal(true);
+    setLoadingEdit(true);
+    setDocumentsToDelete([]);
+    setEditDocumentsFiles(null);
+
+    // Set initial form data
     setEditFormData({
       name: client.name,
       email: client.email,
@@ -487,21 +495,19 @@ export const Clients: React.FC = () => {
       gracePeriod: client.gracePeriod || 5,
       pickUpDay: client.pickUpDay || 'wednesday',
     });
-    setDocumentsToDelete([]);
-    setEditDocumentsFiles(null);
-    setShowEditModal(true);
-    setLoadingEdit(true);
 
-    // Fetch detailed data in background
+    // Fetch detailed data with documents
     try {
       const response = await organizationService.getClientDetails(client.id || client.id || '');
-      if (response.data && response.data.client) {
+      console.log('🔍 Edit dialog - Client details response:', response.data);
+      if (response.data && response.data.data && response.data.data.client) {
         const clientWithDocs = {
           ...client,
-          ...response.data.client,
-          ...response.data.client.user,
-          documents: response.data.client.user?.documents || []
+          ...response.data.data.client,
+          ...response.data.data.client.user,
+          documents: response.data.data.client.user?.documents || []
         };
+        console.log('📄 Edit dialog - Final client with docs:', clientWithDocs);
         setSelectedClient(clientWithDocs);
       }
     } catch (error) {
@@ -530,12 +536,12 @@ export const Clients: React.FC = () => {
     try {
       const response = await organizationService.getClientDetails(client.id || client.id || '');
       console.log('🔍 Client details response:', response.data);
-      if (response.data && response.data.client) {
+      if (response.data && response.data.data && response.data.data.client) {
         const clientWithDocs = {
           ...client,
-          ...response.data.client,
-          ...response.data.client.user,
-          documents: response.data.client.user?.documents || []
+          ...response.data.data.client,
+          ...response.data.data.client.user,
+          documents: response.data.data.client.user?.documents || []
         };
         console.log('📄 Final client with docs:', clientWithDocs);
         setSelectedClient(clientWithDocs);
@@ -577,8 +583,10 @@ export const Clients: React.FC = () => {
       });
 
       if (editDocumentsFiles) {
+        console.log('📎 Frontend: editDocumentsFiles.length =', editDocumentsFiles.length);
         for (let i = 0; i < editDocumentsFiles.length; i++) {
-          formData.append('documents', editDocumentsFiles[i]);
+          console.log('📎 Frontend: Appending file', i + 1, ':', editDocumentsFiles[i].name);
+          formData.append('documents[]', editDocumentsFiles[i]);
         }
       }
 
@@ -591,14 +599,25 @@ export const Clients: React.FC = () => {
       }
       
       console.log('🌐 Making API call to update client...');
-      const response = await organizationService.editClient(selectedClient.id || selectedClient.id || '', formData);
+      const response = await organizationService.editClientWithDocuments(selectedClient.id || selectedClient.id || '', formData);
       console.log('✅ Update response:', response);
 
+      // Update client in the current list instead of reloading
+      if (response?.data?.status && response?.data?.data?.client) {
+        const updatedClientData = response.data.data.client;
+        setClients(prev => prev.map(client => 
+          client.id === selectedClient.id ? {
+            ...client,
+            ...updatedClientData.user,
+            documents: updatedClientData.user?.documents || []
+          } : client
+        ));
+      }
+      
       setShowEditModal(false);
       setSelectedClient(null);
       setDocumentsToDelete([]);
       setEditDocumentsFiles(null);
-      fetchClients();
 
       setSuccessMessage('Client updated successfully!');
       setShowSuccessSnackbar(true);
@@ -637,64 +656,85 @@ export const Clients: React.FC = () => {
   };
 
   const handleDeleteDocument = async (clientId: string, documentPath: string) => {
-    if (window.confirm('Are you sure you want to delete this document?')) {
-      setDeletingDocuments(prev => new Set(prev).add(documentPath));
-      try {
-        await organizationService.deleteClientDocument(clientId, documentPath);
+    setDocumentToDelete({clientId, documentPath});
+    setShowDeleteDocumentDialog(true);
+  };
 
-        // Update UI immediately
+  const confirmDeleteDocument = async () => {
+    if (!documentToDelete) return;
+    
+    setDeletingDocuments(prev => new Set(prev).add(documentToDelete.documentPath));
+    try {
+      await organizationService.deleteClientDocument(documentToDelete.clientId, documentToDelete.documentPath);
+
+        // Update UI immediately - handle both string and object formats
         if (selectedClient) {
           const updatedClient = {
             ...selectedClient,
-            documents: selectedClient.documents?.filter(doc => doc !== documentPath) || []
+            documents: selectedClient.documents?.filter(doc => {
+              const docUrl = typeof doc === 'string' ? doc : doc.url;
+              return docUrl !== documentToDelete.documentPath;
+            }) || []
           };
           setSelectedClient(updatedClient);
         }
 
         setSuccessMessage('Document deleted successfully!');
         setShowSuccessSnackbar(true);
+        setShowDeleteDocumentDialog(false);
+        setDocumentToDelete(null);
       } catch (error) {
         console.error('Failed to delete document:', error);
-        alert('Failed to delete document');
       } finally {
         setDeletingDocuments(prev => {
           const newSet = new Set(prev);
-          newSet.delete(documentPath);
+          newSet.delete(documentToDelete.documentPath);
           return newSet;
         });
       }
     }
-  };
+  
 
   const handleDeleteDocumentInEditMode = async (documentPath: string) => {
     if (!selectedClient) return;
+    setDocumentToDeleteEdit(documentPath);
+    setShowDeleteDocumentEditDialog(true);
+  };
 
-    if (window.confirm('Are you sure you want to delete this document permanently?')) {
-      setDeletingDocuments(prev => new Set(prev).add(documentPath));
-      try {
-        await organizationService.deleteClientDocument(selectedClient.id, documentPath);
+  const confirmDeleteDocumentEdit = async () => {
+    if (!selectedClient || !documentToDeleteEdit) return;
+    
+    console.log('🗑️ Deleting document:', documentToDeleteEdit, 'for client:', selectedClient.id);
+    setDeletingDocuments(prev => new Set(prev).add(documentToDeleteEdit));
+    try {
+      const response = await organizationService.deleteClientDocument(selectedClient.id, documentToDeleteEdit);
+      console.log('🗑️ Delete response:', response);
 
-        // Update the selectedClient state to remove the document
+        // Update the selectedClient state to remove the document - handle both string and object formats
         const updatedClient = {
           ...selectedClient,
-          documents: selectedClient.documents.filter(doc => doc !== documentPath)
+          documents: selectedClient.documents.filter(doc => {
+            const docUrl = typeof doc === 'string' ? doc : doc.url;
+            return docUrl !== documentToDeleteEdit;
+          })
         };
         setSelectedClient(updatedClient);
 
         setSuccessMessage('Document deleted successfully!');
         setShowSuccessSnackbar(true);
+        setShowDeleteDocumentEditDialog(false);
+        setDocumentToDeleteEdit(null);
       } catch (error) {
-        console.error('Error deleting document:', error);
-        alert('Failed to delete document');
+        console.error('🗑️ Error deleting document:', error);
       } finally {
         setDeletingDocuments(prev => {
           const newSet = new Set(prev);
-          newSet.delete(documentPath);
+          newSet.delete(documentToDeleteEdit);
           return newSet;
         });
       }
     }
-  };
+  
 
   const handleAddNewDocuments = async () => {
     if (!selectedClient || !newDocumentsFiles) return;
@@ -703,8 +743,10 @@ export const Clients: React.FC = () => {
     try {
       const formData = new FormData();
 
+      console.log('📎 Frontend: newDocumentsFiles.length =', newDocumentsFiles.length);
       for (let i = 0; i < newDocumentsFiles.length; i++) {
-        formData.append('documents', newDocumentsFiles[i]);
+        console.log('📎 Frontend: Appending file', i + 1, ':', newDocumentsFiles[i].name);
+        formData.append('documents[]', newDocumentsFiles[i]);
       }
 
        const updateFormData = new FormData();
@@ -714,7 +756,7 @@ export const Clients: React.FC = () => {
 
       // Use the client update endpoint with documents
       formData.append('_method', 'PUT');
-      await organizationService.editClient(selectedClient.id || selectedClient.id || '', formData);
+      await organizationService.editClientWithDocuments(selectedClient.id || selectedClient.id || '', formData);
 
       // Fetch fresh data to get new document URLs
       const response = await organizationService.getClientDetails(selectedClient.id || selectedClient.id || '');
@@ -766,8 +808,10 @@ export const Clients: React.FC = () => {
       }
 
       if (documentsFiles) {
+        console.log('📎 Frontend: documentsFiles.length =', documentsFiles.length);
         for (let i = 0; i < documentsFiles.length; i++) {
-          formData.append('documents', documentsFiles[i]);
+          console.log('📎 Frontend: Appending file', i + 1, ':', documentsFiles[i].name);
+          formData.append('documents[]', documentsFiles[i]);
         }
       }
 
@@ -829,14 +873,8 @@ export const Clients: React.FC = () => {
       setShowSuccessSnackbar(true);
     } catch (error: any) {
       console.error('Failed to create client:', error);
-      let message = error.response?.data?.message || error.message || 'Failed to create client';
-      
-      // Handle specific error cases - 500 error usually means duplicate email/phone
-      if (error.response?.status === 500) {
-        message = 'A user with this email or phone number already exists. Please use different contact details.';
-      }
-      
-      setErrorMessage(message);
+      showErrorMessage(error);
+      setErrorMessage(error.userMessage || 'Failed to create client');
       setShowErrorSnackbar(true);
     } finally {
       setAddingClient(false);
@@ -1550,17 +1588,24 @@ export const Clients: React.FC = () => {
         </DialogTitle>
         <form onSubmit={handleUpdate}>
           <DialogContent>
-            <Box sx={{ ml: 3, mb: 2 }}>
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={editFormData.isActive}
-                    onChange={(e) => setEditFormData({ ...editFormData, isActive: e.target.checked })}
+            {loadingEdit ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 8 }}>
+                <CircularProgress size={40} />
+                <Typography sx={{ ml: 2 }}>Loading client details...</Typography>
+              </Box>
+            ) : (
+              <>
+                <Box sx={{ ml: 3, mb: 2 }}>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={editFormData.isActive}
+                        onChange={(e) => setEditFormData({ ...editFormData, isActive: e.target.checked })}
+                      />
+                    }
+                    label="Active Status"
                   />
-                }
-                label="Active Status"
-              />
-            </Box>
+                </Box>
             <Grid container spacing={3}>
               <Grid item xs={12} md={6}>
                 <TextField
@@ -1642,8 +1687,9 @@ export const Clients: React.FC = () => {
 <Box sx={{ maxHeight: 300, overflow: 'auto' }}>
   <List>
     {selectedClient.documents.map((doc, index) => {
-      const fileName = doc.split('/').pop() || `Document ${index + 1}`;
-      const isMarkedForDeletion = documentsToDelete.includes(doc);
+      const fileName = typeof doc === 'string' ? doc.split('/').pop() || `Document ${index + 1}` : doc.original_name || doc.filename || `Document ${index + 1}`;
+      const docUrl = typeof doc === 'string' ? doc : doc.url;
+      const isMarkedForDeletion = documentsToDelete.includes(docUrl);
 
       return (
         <ListItem
@@ -1683,7 +1729,7 @@ export const Clients: React.FC = () => {
           <Box sx={{ display: 'flex', gap: 1, ml: 'auto' }}>
             <IconButton
               size="small"
-              onClick={() => window.open(organizationService.getSecureDocumentUrl(doc), '_blank')}
+              onClick={() => window.open(organizationService.getSecureDocumentUrl(docUrl), '_blank')}
               sx={{ color: 'primary.main' }}
             >
               <VisibilityIcon />
@@ -1692,7 +1738,7 @@ export const Clients: React.FC = () => {
               size="small"
               onClick={async () => {
                 try {
-                  const response = await fetch(organizationService.getSecureDocumentUrl(doc));
+                  const response = await fetch(organizationService.getSecureDocumentUrl(docUrl));
                   const blob = await response.blob();
                   const url = window.URL.createObjectURL(blob);
                   const link = document.createElement('a');
@@ -1710,11 +1756,11 @@ export const Clients: React.FC = () => {
             </IconButton>
             <IconButton
               size="small"
-              onClick={() => handleDeleteDocumentInEditMode(doc)}
+              onClick={() => handleDeleteDocumentInEditMode(docUrl)}
               color="error"
-              disabled={deletingDocuments.has(doc)}
+              disabled={deletingDocuments.has(docUrl)}
             >
-              {deletingDocuments.has(doc) ? <CircularProgress size={16} /> : <DeleteIcon />}
+              {deletingDocuments.has(docUrl) ? <CircularProgress size={16} /> : <DeleteIcon />}
             </IconButton>
           </Box>
         </ListItem>
@@ -1757,6 +1803,8 @@ export const Clients: React.FC = () => {
                 )}
               </Grid>
             </Grid>
+              </>
+            )}
           </DialogContent>
           <DialogActions sx={{ p: 3 }}>
             <Button onClick={() => setShowEditModal(false)} disabled={updatingClient}>
@@ -1985,7 +2033,8 @@ export const Clients: React.FC = () => {
                 ) : selectedClient.documents && selectedClient.documents.length > 0 ? (
                   <Grid container spacing={2}>
                     {selectedClient.documents.map((doc, index) => {
-                      const fileName = doc.split('/').pop() || `Document ${index + 1}`;
+                      const fileName = typeof doc === 'string' ? doc.split('/').pop() || `Document ${index + 1}` : doc.original_name || doc.filename || `Document ${index + 1}`;
+                      const docUrl = typeof doc === 'string' ? doc : doc.url;
                       const isImage = isImageFile(fileName);
 
                       return (
@@ -2005,7 +2054,7 @@ export const Clients: React.FC = () => {
                             <Box sx={{ height: 160, overflow: 'hidden', position: 'relative' }}>
                               {isImage ? (
                                 <img
-                                  src={doc}
+                                  src={docUrl}
                                   alt={fileName}
                                   style={{
                                     width: '100%',
@@ -2061,7 +2110,7 @@ export const Clients: React.FC = () => {
                                 <Button
                                   size="small"
                                   variant="outlined"
-                                  onClick={() => window.open(organizationService.getSecureDocumentUrl(doc), '_blank')}
+                                  onClick={() => window.open(organizationService.getSecureDocumentUrl(docUrl), '_blank')}
                                   startIcon={<VisibilityIcon />}
                                   sx={{ flex: 1, minWidth: 'auto' }}
                                 >
@@ -2072,7 +2121,7 @@ export const Clients: React.FC = () => {
                                   variant="outlined"
                                   onClick={async () => {
                                     try {
-                                      const response = await fetch(organizationService.getSecureDocumentUrl(doc));
+                                      const response = await fetch(organizationService.getSecureDocumentUrl(docUrl));
                                       const blob = await response.blob();
                                       const url = window.URL.createObjectURL(blob);
                                       const link = document.createElement('a');
@@ -2094,12 +2143,12 @@ export const Clients: React.FC = () => {
                                     size="small"
                                     variant="outlined"
                                     color="error"
-                                    onClick={() => handleDeleteDocument(selectedClient.id, doc)}
-                                    startIcon={deletingDocuments.has(doc) ? <CircularProgress size={16} /> : <DeleteIcon />}
-                                    disabled={deletingDocuments.has(doc)}
+                                    onClick={() => handleDeleteDocument(selectedClient.id, docUrl)}
+                                    startIcon={deletingDocuments.has(docUrl) ? <CircularProgress size={16} /> : <DeleteIcon />}
+                                    disabled={deletingDocuments.has(docUrl)}
                                     sx={{ flex: 1, minWidth: 'auto' }}
                                   >
-                                    {deletingDocuments.has(doc) ? 'Deleting...' : 'Delete'}
+                                    {deletingDocuments.has(docUrl) ? 'Deleting...' : 'Delete'}
                                   </Button>
                                 )}
                               </Box>
@@ -3089,6 +3138,54 @@ export const Clients: React.FC = () => {
             startIcon={deleting ? <CircularProgress size={20} /> : <DeleteIcon />}
           >
             {deleting ? 'Deleting...' : 'Delete'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Document Confirmation Dialog */}
+      <Dialog open={showDeleteDocumentDialog} onClose={() => !deletingDocuments.has(documentToDelete?.documentPath || '') && setShowDeleteDocumentDialog(false)}>
+        <DialogTitle>Delete Document</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to delete this document? This action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowDeleteDocumentDialog(false)} disabled={deletingDocuments.has(documentToDelete?.documentPath || '')}>
+            Cancel
+          </Button>
+          <Button 
+            onClick={confirmDeleteDocument} 
+            color="error" 
+            variant="contained"
+            disabled={deletingDocuments.has(documentToDelete?.documentPath || '')}
+            startIcon={deletingDocuments.has(documentToDelete?.documentPath || '') ? <CircularProgress size={20} /> : <DeleteIcon />}
+          >
+            {deletingDocuments.has(documentToDelete?.documentPath || '') ? 'Deleting...' : 'Delete'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Document Edit Mode Confirmation Dialog */}
+      <Dialog open={showDeleteDocumentEditDialog} onClose={() => !deletingDocuments.has(documentToDeleteEdit || '') && setShowDeleteDocumentEditDialog(false)}>
+        <DialogTitle>Delete Document</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to delete this document permanently? This action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowDeleteDocumentEditDialog(false)} disabled={deletingDocuments.has(documentToDeleteEdit || '')}>
+            Cancel
+          </Button>
+          <Button 
+            onClick={confirmDeleteDocumentEdit} 
+            color="error" 
+            variant="contained"
+            disabled={deletingDocuments.has(documentToDeleteEdit || '')}
+            startIcon={deletingDocuments.has(documentToDeleteEdit || '') ? <CircularProgress size={20} /> : <DeleteIcon />}
+          >
+            {deletingDocuments.has(documentToDeleteEdit || '') ? 'Deleting...' : 'Delete'}
           </Button>
         </DialogActions>
       </Dialog>

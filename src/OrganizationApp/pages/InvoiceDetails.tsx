@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { organizationService } from '../../shared/services/services/organizationService';
+import { handleApiError } from '../../shared/utils/errorHandler';
 
 interface Payment {
   id: number;
@@ -23,7 +25,7 @@ interface InvoiceDetails {
   due_date: string;
   description: string;
   status: string;
-  payment_ids: number[] | null;
+  payment_trans_ids: string[] | null;
   paid_amount: string;
   payment_status: string;
   created_at: string;
@@ -41,11 +43,13 @@ interface InvoiceDetails {
 }
 
 interface InvoiceDetailsProps {
-  invoiceId: string | null;
+  invoiceId?: string | null;
   onNavigate?: (tab: string, params?: {invoiceId?: string}) => void;
 }
 
-export const InvoiceDetails: React.FC<InvoiceDetailsProps> = ({ invoiceId, onNavigate }) => {
+export const InvoiceDetails: React.FC<InvoiceDetailsProps> = ({ onNavigate }) => {
+  const { invoiceId } = useParams<{ invoiceId: string }>();
+  const navigate = useNavigate();
   const [invoice, setInvoice] = useState<InvoiceDetails | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -71,7 +75,7 @@ export const InvoiceDetails: React.FC<InvoiceDetailsProps> = ({ invoiceId, onNav
         setError('Failed to fetch invoice details');
       }
     } catch (err: unknown) {
-      setError(err + 'An error occurred while fetching invoice details');
+      handleApiError(err, (message) => setError(message));
     } finally {
       setLoading(false);
     }
@@ -124,9 +128,7 @@ export const InvoiceDetails: React.FC<InvoiceDetailsProps> = ({ invoiceId, onNav
   };
 
   const handleGoBack = () => {
-    if (onNavigate) {
-      onNavigate('invoices');
-    }
+    navigate('/organization/dashboard/invoices');
   };
 
   if (loading) {

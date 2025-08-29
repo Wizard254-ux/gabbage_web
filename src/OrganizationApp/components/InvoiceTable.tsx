@@ -12,7 +12,7 @@ interface Invoice {
     due_date: string;
     description: string;
     status: string;
-    payment_ids: number[] | null;
+    payment_trans_ids: string[] | null;
     paid_amount: string;
     payment_status: string;
     created_at: string;
@@ -140,18 +140,19 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
                     <thead className="bg-gray-100">
                     <tr>
                         <th className="py-3 px-4 border-b text-left">#</th>
-                        <th className="py-3 px-4 border-b text-left">Invoice Number</th>
-                        <th className="py-3 px-4 border-b text-left">Client Name</th>
-                        <th className="py-3 px-4 border-b text-left">Account Number</th>
-                        <th className="py-3 px-4 border-b text-left">Billing Period</th>
+                        <th className="py-3 px-4 border-b text-left">Inv_Number</th>
+                        <th className="py-3 px-4 border-b text-left">Client</th>
+                        <th className="py-3 px-4 border-b text-left">Acc_Number</th>
+                        <th className="py-3 px-4 border-b text-left">Type</th>
                         <th className="py-3 px-4 border-b text-left">Issue Date</th>
                         <th className="py-3 px-4 border-b text-left">Due Date</th>
-                        <th className="py-3 px-4 border-b text-left">Total Amount</th>
-                        <th className="py-3 px-4 border-b text-left">Amount Paid</th>
+                        <th className="py-3 px-4 border-b text-left">Total</th>
+                        <th className="py-3 px-4 border-b text-left">Paid</th>
                         <th className="py-3 px-4 border-b text-left">Balance</th>
-                        <th className="py-3 px-4 border-b text-left">Payment Status</th>
+                        <th className="py-3 px-4 border-b text-left">Payment</th>
                         <th className="py-3 px-4 border-b text-left">Due Status</th>
-                        {onViewInvoice && <th className="py-3 px-4 border-b text-center">Actions</th>}
+                        <th className="py-3 px-4 border-b text-left">Trans ID</th>
+                        <th className="py-3 px-4 border-b text-center">Actions</th>
                     </tr>
                     </thead>
                     <tbody>
@@ -221,30 +222,54 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
                       {formatDueStatus(invoice.status)}
                     </span>
                                 </td>
-                                {onViewInvoice && (
-                                    <td className="py-3 px-4 border-b text-center">
-                                        <button
-                                            onClick={() => onViewInvoice(invoice.id)}
-                                            className="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200"
-                                            title="View invoice details and payment history"
-                                        >
-                                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor"
-                                                 viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                                            </svg>
-                                            View
-                                        </button>
-                                    </td>
-                                )}
+                                <td className="py-3 px-4 border-b">
+                                    {invoice.payment_trans_ids && invoice.payment_trans_ids.length > 0 ? (
+                                        invoice.payment_trans_ids.length === 1 ? (
+                                            <span className="text-sm font-mono bg-gray-100 px-2 py-1 rounded">
+                                                {invoice.payment_trans_ids[0]}
+                                            </span>
+                                        ) : (
+                                            <div className="relative group">
+                                                <button className="text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded hover:bg-blue-200 flex items-center gap-1">
+                                                    {invoice.payment_trans_ids.length} payments
+                                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                                    </svg>
+                                                </button>
+                                                <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded shadow-lg z-10 min-w-48 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                                                    <div className="p-2 max-h-32 overflow-y-auto">
+                                                        {invoice.payment_trans_ids.map((transId, idx) => (
+                                                            <div key={idx} className="text-xs font-mono bg-gray-50 px-2 py-1 rounded mb-1 last:mb-0">
+                                                                {transId}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )
+                                    ) : (
+                                        <span className="text-gray-400 text-sm">No payments</span>
+                                    )}
+                                </td>
+                                <td className="py-3 px-4 border-b text-center">
+                                    <button
+                                        onClick={() => onViewInvoice?.(invoice.id.toString())}
+                                        className="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200"
+                                        title="View invoice details"
+                                    >
+                                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
+                                        View
+                                    </button>
+                                </td>
                             </tr>
                         );
                     })}
                     {invoices.length === 0 && (
                         <tr>
-                            <td colSpan={onViewInvoice ? 13 : 12} className="py-4 text-center text-gray-500">No invoices
+                            <td colSpan={14} className="py-4 text-center text-gray-500">No invoices
                                 found
                             </td>
                         </tr>

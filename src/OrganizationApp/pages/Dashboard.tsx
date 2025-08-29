@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../shared/contexts/AuthContext';
 import { organizationService } from '../../shared/services/services/organizationService';
+import { handleApiError } from '../../shared/utils/errorHandler';
 
 interface DashboardProps {
   onNavigate?: (tab: string) => void;
@@ -53,9 +54,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       }
     } catch (error: any) {
       console.error('❌ Dashboard: Failed to fetch dashboard data:', error);
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to load dashboard data';
-      setError(errorMessage);
-      setShowErrorModal(true);
+      handleApiError(error, (message) => {
+        setError(message);
+        setShowErrorModal(true);
+      });
     } finally {
       setLoading(prev => ({ ...prev, counts: false }));
       console.log('🏁 Dashboard: Dashboard data fetching completed');
