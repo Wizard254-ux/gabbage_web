@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { organizationService } from '../../services/organizationService';
+import { organizationService } from '../../shared/services/services/organizationService';
 import { InvoiceTable } from '../components/InvoiceTable';
 import { AgingSummaryTable } from '../components/AgingSummaryTable';
 

@@ -45,7 +45,7 @@ import {
   Assignment as AssignIcon,
   MoreVert as MoreVertIcon
 } from '@mui/icons-material';
-import { organizationService } from '../../services/organizationService';
+import { organizationService } from '../../shared/services/services/organizationService';
 
 interface BagIssue {
   id: number;
@@ -82,6 +82,7 @@ const Bags: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [bagIssues, setBagIssues] = useState<BagIssue[]>([]);
   const [driverAllocations, setDriverAllocations] = useState<any[]>([]);
+  const [bagTransfers, setBagTransfers] = useState<any[]>([]);
   const [bagInventory, setBagInventory] = useState<any>(null);
   const [clients, setClients] = useState<Client[]>([]);
   const [drivers, setDrivers] = useState<any[]>([]);
@@ -164,6 +165,16 @@ const Bags: React.FC = () => {
     }
   };
 
+  const fetchBagTransfers = async () => {
+    try {
+      const response = await organizationService.getBagTransfers();
+      setBagTransfers(response.data.data || []);
+    } catch (error) {
+      console.error('Failed to fetch bag transfers:', error);
+      setBagTransfers([]);
+    }
+  };
+
   const fetchDriverAllocations = async (searchTerm = '') => {
     setSearchingDrivers(true);
     try {
@@ -183,6 +194,7 @@ const Bags: React.FC = () => {
     fetchClients();
     fetchDrivers();
     fetchBagInventory();
+    fetchBagTransfers();
   }, []);
 
   useEffect(() => {
@@ -536,6 +548,7 @@ const Bags: React.FC = () => {
         <Tabs value={activeTab} onChange={(e, newValue) => setActiveTab(newValue)}>
           <Tab label="Bag Issues" />
           <Tab label="Driver Allocations" />
+          <Tab label="Bag Transfers" />
         </Tabs>
       </Card>
 
@@ -866,7 +879,7 @@ const Bags: React.FC = () => {
                 )}
               </Box>
             )
-          ) : (
+          ) : activeTab === 1 ? (
             // Driver Allocations Tab
             driverAllocations.length > 0 ? (
               <TableContainer>
@@ -948,6 +961,105 @@ const Bags: React.FC = () => {
                     Clear Search
                   </Button>
                 )}
+              </Box>
+            )
+          ) : (
+            // Bag Transfers Tab
+            bagTransfers.length > 0 ? (
+              <TableContainer>
+                <Table>
+                  <TableHead>
+                    <TableRow sx={{ bgcolor: 'grey.50' }}>
+                      <TableCell sx={{ fontWeight: 'bold' }}>Transfer Date</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold' }}>From Driver</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold' }}>To Driver</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold' }}>Bags Transferred</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold' }}>Completed At</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold' }}>Notes</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {bagTransfers.map((transfer, index) => (
+                      <TableRow key={transfer.id || index} hover>
+                        <TableCell>
+                          <Typography variant="body2">
+                            {new Date(transfer.created_at).toLocaleDateString()}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {new Date(transfer.created_at).toLocaleTimeString()}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Avatar sx={{ width: 32, height: 32 }}>
+                              <PersonIcon />
+                            </Avatar>
+                            <Typography variant="body2" fontWeight="medium">
+                              {transfer.from_driver?.name || 'Unknown Driver'}
+                            </Typography>
+                          </Box>
+                        </TableCell>
+                        <TableCell>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Avatar sx={{ width: 32, height: 32 }}>
+                              <PersonIcon />
+                            </Avatar>
+                            <Typography variant="body2" fontWeight="medium">
+                              {transfer.to_driver?.name || 'Unknown Driver'}
+                            </Typography>
+                          </Box>
+                        </TableCell>
+                        <TableCell>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <BagIcon color="action" fontSize="small" />
+                            <Typography variant="body2" fontWeight="medium">
+                              {transfer.number_of_bags}
+                            </Typography>
+                          </Box>
+                        </TableCell>
+                        <TableCell>
+                          <Chip 
+                            label={transfer.status} 
+                            size="small"
+                            color={transfer.status === 'completed' ? 'success' : transfer.status === 'pending' ? 'warning' : 'error'}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          {transfer.completed_at ? (
+                            <Box>
+                              <Typography variant="body2">
+                                {new Date(transfer.completed_at).toLocaleDateString()}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                {new Date(transfer.completed_at).toLocaleTimeString()}
+                              </Typography>
+                            </Box>
+                          ) : (
+                            <Typography variant="body2" color="text.secondary">
+                              Not completed
+                            </Typography>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2" color="text.secondary">
+                            {transfer.notes || 'No notes'}
+                          </Typography>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            ) : (
+              <Box sx={{ textAlign: 'center', py: 4 }}>
+                <BagIcon sx={{ fontSize: 48, color: 'grey.400', mb: 2 }} />
+                <Typography variant="h6" color="text.secondary" gutterBottom>
+                  No Bag Transfers Found
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  No bag transfers have been recorded yet.
+                </Typography>
               </Box>
             )
           )}

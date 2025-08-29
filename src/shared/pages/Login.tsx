@@ -11,7 +11,7 @@ import {
   Avatar,
 } from '@mui/material';
 import { Nature as EcoIcon } from '@mui/icons-material';
-import { adminService } from '../services/axios';
+import { adminService } from '../services/services/axios';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -27,8 +27,19 @@ const Login: React.FC = () => {
 
     try {
       const response = await adminService.login({ email, password });
-      localStorage.setItem('admin', JSON.stringify(response.data));
-      navigate('/admin/dashboard');
+      const userData = response.data;
+      
+      // Store user data
+      localStorage.setItem('user', JSON.stringify(userData));
+      console.log('User data stored:', userData);
+      // Navigate based on role
+      if (userData.data.user?.role === 'admin') {
+        navigate('/admin/dashboard');
+      } else if (userData.data.user?.role === 'organization') {
+        navigate('/organization/dashboard');
+      } else {
+        setError('Invalid user role');
+      }
     } catch (error: any) {
       setError(error.response?.data?.message || 'Login failed');
     } finally {
@@ -52,7 +63,7 @@ const Login: React.FC = () => {
               <EcoIcon />
             </Avatar>
             <Typography component="h1" variant="h5">
-              GreenLife Admin
+              GreenLife Login
             </Typography>
             
             {error && (

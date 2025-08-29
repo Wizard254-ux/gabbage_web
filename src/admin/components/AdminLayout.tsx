@@ -21,7 +21,7 @@ import {
   Logout as LogoutIcon,
   Nature as EcoIcon,
 } from '@mui/icons-material';
-import { adminService } from '../services/axios';
+import { adminService } from '../../shared/services/services/axios';
 
 const drawerWidth = 240;
 
@@ -30,8 +30,8 @@ const AdminLayout: React.FC = () => {
   const location = useLocation();
 
   useEffect(() => {
-    const admin = localStorage.getItem('admin');
-    if (!admin) {
+    const user = localStorage.getItem('user');
+    if (!user) {
       navigate('/login');
     }
   }, [navigate]);
@@ -42,7 +42,7 @@ const AdminLayout: React.FC = () => {
     } catch (error) {
       console.error('Logout failed:', error);
     } finally {
-      localStorage.removeItem('admin');
+      localStorage.removeItem('user');
       navigate('/login');
     }
   };

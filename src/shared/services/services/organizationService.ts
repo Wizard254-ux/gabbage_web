@@ -9,18 +9,18 @@ const api = axios.create({
 
 // Add auth token to requests
 api.interceptors.request.use((config) => {
-  const adminData = localStorage.getItem('admin');
-  if (adminData) {
+  const userData = localStorage.getItem('user');
+  if (userData) {
     try {
-      const parsedData = JSON.parse(adminData);
-      const token = parsedData.data?.access_token; // Correct path for organization login
+      const parsedData = JSON.parse(userData);
+      const token = parsedData.data?.access_token;
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
         console.log('Added auth token to request:', config.method?.toUpperCase(), config.url);
       }
     } catch (error) {
-      console.error('Error parsing admin data:', error);
-      localStorage.removeItem('admin');
+      console.error('Error parsing user data:', error);
+      localStorage.removeItem('user');
     }
   }
   return config;
@@ -44,7 +44,7 @@ api.interceptors.response.use(
       error.config._retry = true; // Mark as retry to prevent infinite loop
       
       console.log('Token expired, redirecting to login...');
-      localStorage.removeItem('admin');
+      localStorage.removeItem('user');
       window.location.href = '/login';
       return Promise.reject(error);
     }
@@ -347,16 +347,16 @@ export const organizationService = {
 
   // Secure document viewing
   getSecureDocumentUrl: (documentUrl: string) => {
-    const adminData = localStorage.getItem('admin');
-    if (adminData) {
+    const userData = localStorage.getItem('user');
+    if (userData) {
       try {
-        const parsedData = JSON.parse(adminData);
+        const parsedData = JSON.parse(userData);
         const token = parsedData.data?.access_token;
         if (token) {
           return `${documentUrl}?token=${token}`;
         }
       } catch (error) {
-        console.error('Error parsing admin data:', error);
+        console.error('Error parsing user data:', error);
       }
     }
     return documentUrl;
@@ -556,6 +556,13 @@ export const organizationService = {
     console.log('🔄 Processing bag return with data:', data);
     const response = await api.post('/organization/bags/process-return', data);
     console.log('🔄 Process bag return response:', response.data);
+    return response;
+  },
+
+  getBagTransfers: async (params = {}) => {
+    console.log('🔄 Fetching bag transfers with params:', params);
+    const response = await api.get('/organization/bags/transfers', { params });
+    console.log('🔄 Bag transfers response:', response.data);
     return response;
   },
 

@@ -23,7 +23,7 @@ import {
   Add as AddIcon,
   Person as PersonIcon,
 } from '@mui/icons-material';
-import { adminService } from '../../services/axios';
+import { adminService } from '../../shared/services/services/axios';
 
 interface Admin {
   id: string;

@@ -50,7 +50,7 @@ import {
   PlayArrow as PlayArrowIcon,
   Pause as PauseIcon
 } from '@mui/icons-material';
-import { organizationService } from '../../services/organizationService';
+import { organizationService } from '../../shared/services/services/organizationService';
 
 interface Route {
   id: string;

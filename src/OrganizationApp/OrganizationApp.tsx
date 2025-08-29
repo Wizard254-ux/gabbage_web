@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Sidebar } from './components/Sidebar';
 import { Navbar } from './components/Navbar';
 import { Dashboard } from './pages/Dashboard';
 import { Drivers } from './pages/Drivers';
 import { Clients } from './pages/Clients';
-import { Routes } from './pages/Routes';
+import { Routes as RoutesPage } from './pages/Routes';
 import { Payments } from './pages/Payments';
 import { Invoices } from './pages/Invoices';
 import { InvoiceDetails } from './pages/InvoiceDetails';
@@ -16,57 +17,13 @@ interface OrganizationAppProps {
 }
 
 export const OrganizationApp: React.FC<OrganizationAppProps> = ({ onLogout }) => {
-  const [activeTab, setActiveTab] = useState(() => {
-    return sessionStorage.getItem('activeTab') || 'dashboard';
-  });
-  const [invoiceId, setInvoiceId] = useState<string | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-  useEffect(() => {
-    sessionStorage.setItem('activeTab', activeTab);
-  }, [activeTab]);
-
-  const handleNavigation = (tab: string, params?: {invoiceId?: string}) => {
-    if (tab === 'invoice-details' && params?.invoiceId) {
-      setInvoiceId(params.invoiceId);
-      setActiveTab('invoice-details');
-    } else {
-      setActiveTab(tab);
-      setInvoiceId(null);
-    }
-    sessionStorage.setItem('activeTab', tab);
-  };
-
-  const renderContent = () => {
-    switch (activeTab) {
-      case 'dashboard':
-        return <Dashboard onNavigate={handleNavigation} />;
-      case 'drivers':
-        return <Drivers />;
-      case 'clients':
-        return <Clients />;
-      case 'routes':
-        return <Routes />;
-      case 'payments':
-        return <Payments />;
-      case 'invoices':
-        return <Invoices onNavigate={handleNavigation} />;
-      case 'invoice-details':
-        return <InvoiceDetails invoiceId={invoiceId} onNavigate={handleNavigation} />;
-      case 'pickups':
-        return <Pickups />;
-      case 'bags':
-        return <Bags />;
-      default:
-        return <Dashboard onNavigate={handleNavigation} />;
-    }
-  };
+  const location = useLocation();
 
   return (
     <div className="h-screen bg-white flex overflow-hidden">
       <Sidebar 
-        activeTab={activeTab} 
-        setActiveTab={setActiveTab}
+        currentPath={location.pathname}
         isMobileMenuOpen={isMobileMenuOpen}
         setIsMobileMenuOpen={setIsMobileMenuOpen}
       />
@@ -75,7 +32,18 @@ export const OrganizationApp: React.FC<OrganizationAppProps> = ({ onLogout }) =>
         <Navbar onLogout={onLogout} setIsMobileMenuOpen={setIsMobileMenuOpen} />
         
         <main className="flex-1 overflow-y-auto bg-gray-50">
-          {renderContent()}
+          <Routes>
+            <Route path="dashboard" element={<Dashboard />} />
+            <Route path="dashboard/drivers" element={<Drivers />} />
+            <Route path="dashboard/clients" element={<Clients />} />
+            <Route path="dashboard/routes" element={<RoutesPage />} />
+            <Route path="dashboard/payments" element={<Payments />} />
+            <Route path="dashboard/invoices" element={<Invoices />} />
+            <Route path="dashboard/invoices/:invoiceId" element={<InvoiceDetails />} />
+            <Route path="dashboard/pickups" element={<Pickups />} />
+            <Route path="dashboard/bags" element={<Bags />} />
+            <Route path="" element={<Navigate to="dashboard" replace />} />
+          </Routes>
         </main>
       </div>
     </div>

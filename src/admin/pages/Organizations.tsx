@@ -38,7 +38,7 @@ import {
   Delete as DeleteIcon,
   Block as BlockIcon,
 } from '@mui/icons-material';
-import { adminService } from '../../services/axios';
+import { adminService } from '../../shared/services/services/axios';
 
 interface Organization {
   id: string;
