@@ -63,7 +63,7 @@ const AdminLayout: React.FC = () => {
       >
         <Toolbar>
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            GreenLife Admin
+            WasteFlow Admin
           </Typography>
           <Button color="inherit" onClick={handleLogout} startIcon={<LogoutIcon />}>
             Logout

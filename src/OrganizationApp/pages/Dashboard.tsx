@@ -53,7 +53,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         throw new Error('Failed to fetch dashboard counts');
       }
     } catch (error: any) {
-      console.error('❌ Dashboard: Failed to fetch dashboard data:', error);
+      console.error("❌ Dashboard: Failed to fetch dashboard data:", error);
+      // @ts-expect-error - organizationService
       handleApiError(error, (message) => {
         setError(message);
         setShowErrorModal(true);

@@ -123,7 +123,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPath, isMobileMenuOpen,
                 </svg>
               </div>
               <div>
-                <h2 className="text-lg font-bold text-white">GreenLife</h2>
+                <h2 className="text-lg font-bold text-white"></h2>
                 <p className="text-xs text-gray-400">Organization Portal</p>
               </div>
             </div>
